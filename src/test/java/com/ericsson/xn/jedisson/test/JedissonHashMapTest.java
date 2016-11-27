@@ -1,6 +1,8 @@
 package com.ericsson.xn.jedisson.test;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import junit.framework.Assert;
@@ -65,7 +67,10 @@ public class JedissonHashMapTest {
 				new JedissonStringSerializer(),
 				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		
-		for(int i = 0; i < 10; i++){
+		long startTime = System.currentTimeMillis();
+		System.out.println("begin:" + startTime);
+		int count = 1000;
+		for(int i = 0; i < count; i++){
 			TestObject test = new TestObject();
 			test.setName("PutTest" + i);
 			test.setAge(i);
@@ -73,11 +78,37 @@ public class JedissonHashMapTest {
 			test.getChilden().put("child" + i, new TestObject("child" + i,i));
 			map.put(test.getName(), test);
 		}
-		
-		Assert.assertEquals(20, map.size());
+		System.out.println("end:" + (System.currentTimeMillis() - startTime));
+		Assert.assertEquals(count + 10, map.size());
 		Assert.assertEquals("PutTest9", map.get("PutTest9").getName());
 	}
 	
+	@Test
+	public void testJedissonMapPutAll(){
+		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
+				new JedissonStringSerializer(),
+				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		
+		long startTime = System.currentTimeMillis();
+		System.out.println("begin:" + startTime);
+		
+		Map<String, TestObject> data = new HashMap<>();
+		int count = 1000;
+		for(int i = 0; i < count; i++){
+			TestObject test = new TestObject();
+			test.setName("PutTest" + i);
+			test.setAge(i);
+			test.getFriends().add("friends" + i);
+			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+			data.put(test.getName(), test);
+		}
+		
+		map.putAll(data);
+		System.out.println("end:" + (System.currentTimeMillis() - startTime));
+		Assert.assertEquals(count + 10, map.size());
+		Assert.assertEquals("PutTest9", map.get("PutTest9").getName());
+	}
 	@Test
 	public void testJedissonHashMapGet(){
 		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);

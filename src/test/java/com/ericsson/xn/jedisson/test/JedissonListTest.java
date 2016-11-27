@@ -411,7 +411,7 @@ public class JedissonListTest {
 					test.setName("thread" + i);
 					test.setAge(i);
 					list.add(test);
-					System.out.println(Thread.currentThread().getId() + ": " + "add " + test.getName());
+//					System.out.println(Thread.currentThread().getId() + ": " + "add " + test.getName());
 				}
 			}
 			
@@ -425,7 +425,7 @@ public class JedissonListTest {
 				while(!list.isEmpty()){
 					TestObject test = list.get(0);
 					list.remove(test);
-					System.out.println(Thread.currentThread().getId() + " remove " + test.getName());
+//					System.out.println(Thread.currentThread().getId() + " remove " + test.getName());
 				}
 			}
 		};
