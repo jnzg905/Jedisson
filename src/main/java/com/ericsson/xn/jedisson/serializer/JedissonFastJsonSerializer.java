@@ -6,9 +6,9 @@ import com.ericsson.xn.jedisson.common.JedssionSerializationException;
 
 public class JedissonFastJsonSerializer<T> implements IJedissonSerializer<T>{
  
-	private final Class<T> clss;
+	private Class<T> clss;
 	
-	public JedissonFastJsonSerializer(final Class<T> clss){
+	public JedissonFastJsonSerializer(Class<T> clss){
 		this.clss = clss;
 	}
 	

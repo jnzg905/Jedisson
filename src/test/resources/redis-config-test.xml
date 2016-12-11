@@ -41,4 +41,6 @@
 				class="org.springframework.data.redis.serializer.StringRedisSerializer" />
 		</property>
 	</bean>
+		
+	<bean id="beanLocator" class="com.ericsson.xn.jedisson.common.BeanLocator"/>
 </beans>  

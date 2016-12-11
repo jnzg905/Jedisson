@@ -21,17 +21,7 @@ import com.ericsson.xn.jedisson.api.IJedisson;
 import com.ericsson.xn.jedisson.collection.JedissonList;
 import com.ericsson.xn.jedisson.serializer.JedissonFastJsonSerializer;
 
-public class JedissonListTest {
-
-	private static ApplicationContext context;
-	
-	private static RedisTemplate redisTemplate;
-	
-	@BeforeClass
-	public static void beforeTest(){
-		context = new ClassPathXmlApplicationContext("redis-config-test.xml");
-		redisTemplate = (RedisTemplate) context.getBean("redisTemplate");
-	}
+public class JedissonListTest extends BaseTest{
 	
 	@Before
 	public void testBegin(){

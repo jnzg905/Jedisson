@@ -19,13 +19,10 @@ import com.ericsson.xn.jedisson.Jedisson;
 import com.ericsson.xn.jedisson.api.IJedissonSerializer;
 
 public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
-
-	private IJedissonSerializer keySerializer;
 	
-	public JedissonHashMap(String name, IJedissonSerializer keySerializer, IJedissonSerializer valueSerializer,
+	public JedissonHashMap(String name, IJedissonSerializer<K> keySerializer, IJedissonSerializer<V> valueSerializer,
 			Jedisson jedisson) {
-		super(name, valueSerializer, jedisson);
-		this.keySerializer = keySerializer;
+		super(name, keySerializer,valueSerializer, jedisson);
 	}
 
 	@Override
@@ -40,7 +37,7 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 
 	@Override
 	public boolean containsKey(Object key) {
-		return getJedisson().getRedisTemplate().opsForHash().hasKey(getName(), keySerializer.serialize(key));
+		return getJedisson().getRedisTemplate().opsForHash().hasKey(getName(), getKeySerializer().serialize((K) key));
 	}
 
 	@Override
@@ -58,9 +55,9 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 				"end;" + 
 				"return 0",Boolean.class);
 
-		return (boolean) getJedisson().getRedisTemplate().execute(script,
-				Collections.<Object>singletonList(getName()),
-				getSerializer().serialize(value));
+		return getJedisson().getRedisTemplate().execute(script,
+				Collections.<String>singletonList(getName()),
+				getValueSerializer().serialize((V) value));
 	}
 
 	@Override
@@ -69,8 +66,8 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 			throw new NullPointerException("map key can't be null");
 		}
 
-		return (V) getSerializer().deserialize((String) getJedisson().getRedisTemplate().opsForHash().get(getName(), 
-				keySerializer.serialize(key)));
+		return (V) getValueSerializer().deserialize((String) getJedisson().getRedisTemplate().opsForHash().get(getName(), 
+				getKeySerializer().serialize((K) key)));
 	}
 
 	@Override
@@ -88,10 +85,10 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 				"return v", 
 				String.class);
 		
-		return (V) getSerializer().deserialize((String) getJedisson().getRedisTemplate().execute(
+		return getValueSerializer().deserialize(getJedisson().getRedisTemplate().execute(
 				script, 
-				Collections.<Object>singletonList(getName()), 
-				keySerializer.serialize(key),getSerializer().serialize(value)));
+				Collections.<String>singletonList(getName()), 
+				getKeySerializer().serialize(key),getValueSerializer().serialize(value)));
 	}
 
 	@Override
@@ -104,17 +101,17 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 				"redis.call('hdel', KEYS[1], ARGV[1]); " + 
 				"return v", 
 				String.class);
-		return (V) getSerializer().deserialize((String) getJedisson().getRedisTemplate().execute(
+		return (V) getValueSerializer().deserialize(getJedisson().getRedisTemplate().execute(
 				script, 
-				Collections.<Object>singletonList(getName()), 
-				keySerializer.serialize(key)));
+				Collections.<String>singletonList(getName()), 
+				getKeySerializer().serialize((K) key)));
 	}
 
 	@Override
 	public void putAll(Map<? extends K, ? extends V> m) {
         Map<String,String> params = new HashMap<>();
-        for(Map.Entry entry : m.entrySet()){
-        	params.put(keySerializer.serialize(entry.getKey()), getSerializer().serialize(entry.getValue()));
+        for(Map.Entry<? extends K,? extends V> entry : m.entrySet()){
+        	params.put(getKeySerializer().serialize(entry.getKey()), getValueSerializer().serialize(entry.getValue()));
         }
         getJedisson().getRedisTemplate().opsForHash().putAll(getName(), params);
 		
@@ -133,9 +130,9 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 	@Override
 	public Collection<V> values() {
 		List<V> result = new LinkedList<>();
-		List<String> values = getJedisson().getRedisTemplate().opsForHash().values(getName());
+		List<String> values = getJedisson().getRedisTemplate().<String,String>opsForHash().values(getName());
 		for(String value : values){
-			result.add((V) getSerializer().deserialize(value));
+			result.add((V) getValueSerializer().deserialize(value));
 		}
 		return result;
 	}
@@ -148,17 +145,17 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 	public void fastRemove(K... keys){
 		List<String> params = new ArrayList<>();
 		for(K key : keys){
-			params.add(keySerializer.serialize(key));
+			params.add(getKeySerializer().serialize(key));
 		}
 		getJedisson().getRedisTemplate().opsForHash().delete(getName(), params.toArray());
 	}
 	
 	protected Iterator<Entry<K,V>> newEntryIterator(){
-		return new EntryIterator(getJedisson().getRedisTemplate().opsForHash().scan(getName(), ScanOptions.scanOptions().build()));
+		return new EntryIterator(getJedisson().getRedisTemplate().<String,String>opsForHash().scan(getName(), ScanOptions.scanOptions().build()));
 	}
 	
 	protected Iterator<K> newKeyIterator() {
-       return new KeyIterator(getJedisson().getRedisTemplate().opsForHash().scan(getName(), ScanOptions.scanOptions().build()));
+       return new KeyIterator(getJedisson().getRedisTemplate().<String,String>opsForHash().scan(getName(), ScanOptions.scanOptions().build()));
     }
 
 	final class EntrySet extends AbstractSet<Entry<K,V>>{
@@ -221,10 +218,10 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
     }
 	
 	private class KeyIterator implements Iterator<K> {
-		private Cursor<Map.Entry<K,V>> cursor;
+		private Cursor<Map.Entry<String,String>> cursor;
 		private K curr;
 
-		public KeyIterator(final Cursor<Map.Entry<K,V>> cursor) {
+		public KeyIterator(final Cursor<Map.Entry<String,String>> cursor) {
 			this.cursor = cursor;
 		}
 
@@ -235,7 +232,7 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 
 		@Override
 		public K next() {
-			K k = cursor.next().getKey();
+			K k = getKeySerializer().deserialize(cursor.next().getKey());
 			curr = k;
 			return k;
 		}
@@ -247,11 +244,11 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 	}
 	 
 	private class EntryIterator implements Iterator<Map.Entry<K, V>>{
-		private Cursor<Map.Entry<K,V>> cursor;
+		private Cursor<Map.Entry<String,String>> cursor;
 		
 		private Map.Entry<K,V> curr;
 		
-		public EntryIterator(final Cursor<Map.Entry<K,V>> cursor){
+		public EntryIterator(final Cursor<Map.Entry<String,String>> cursor){
 			this.cursor = cursor;
 		}
 
@@ -262,9 +259,9 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 
 		@Override
 		public java.util.Map.Entry<K, V> next() {
-			Entry<String,String> entry = (java.util.Map.Entry<String, String>) cursor.next(); 
-			curr = new HashEntry(keySerializer.deserialize(entry.getKey()),
-					getSerializer().deserialize(entry.getValue()));
+			Entry<String,String> entry = cursor.next(); 
+			curr = new HashEntry(getKeySerializer().deserialize(entry.getKey()),
+					getValueSerializer().deserialize(entry.getValue()));
 			return curr;
 		}
 

@@ -23,17 +23,8 @@ import com.ericsson.xn.jedisson.map.JedissonHashMap;
 import com.ericsson.xn.jedisson.serializer.JedissonFastJsonSerializer;
 import com.ericsson.xn.jedisson.serializer.JedissonStringSerializer;
 
-public class JedissonHashMapTest {
-	private static ApplicationContext context;
-	
-	private static RedisTemplate redisTemplate;
-	
-	@BeforeClass
-	public static void beforeTest(){
-		context = new ClassPathXmlApplicationContext("redis-config-test.xml");
-		redisTemplate = (RedisTemplate) context.getBean("redisTemplate");
-	}
-	
+public class JedissonHashMapTest extends BaseTest{
+
 	@Before
 	public void testBegin(){
 		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
@@ -94,7 +85,7 @@ public class JedissonHashMapTest {
 		System.out.println("begin:" + startTime);
 		
 		Map<String, TestObject> data = new HashMap<>();
-		int count = 1000;
+		int count = 100000;
 		for(int i = 0; i < count; i++){
 			TestObject test = new TestObject();
 			test.setName("PutTest" + i);
@@ -194,5 +185,27 @@ public class JedissonHashMapTest {
 		}
 		
 		Assert.assertEquals(0, map.size());
+	}
+	
+	@Test
+	public void testJedissonMapToMap(){
+		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		JedissonHashMap<String,JedissonHashMap> map = jedisson.getMap("mapmap",
+				new JedissonStringSerializer(),
+				new JedissonFastJsonSerializer<JedissonHashMap>(JedissonHashMap.class));
+		
+		JedissonHashMap<String,TestObject> valMap = jedisson.getMap("valMap", 
+				new JedissonStringSerializer(),
+				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		
+		for(int i = 0; i < 10; i++){
+			TestObject test = new TestObject();
+			test.setName("test" + i);
+			valMap.put("valMap_key" + i, test);	
+		}
+		map.put("mapmap_key1", valMap);
+		
+		map.clear();
+		valMap.clear();
 	}
 }

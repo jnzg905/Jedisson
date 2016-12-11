@@ -18,7 +18,7 @@ import com.ericsson.xn.jedisson.Jedisson;
 import com.ericsson.xn.jedisson.api.IJedissonSerializer;
 import com.ericsson.xn.jedisson.common.JedissonObject;
 
-public class JedissonList<E> extends AbstractJedissonList<E>{
+public class JedissonList<E> extends AbstractJedissonCollection<E>{
 		
 	public JedissonList(final String name, IJedissonSerializer<E> serializer, final Jedisson jedisson){
 		super(name,serializer,jedisson);
@@ -26,7 +26,7 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
 	
 	@Override
 	public E get(int index) {
-		return (E) getSerializer().deserialize((String) getJedisson().getRedisTemplate().opsForList().index(getName(), index));
+		return (E) getSerializer().deserialize(getJedisson().getRedisTemplate().opsForList().index(getName(), index));
 	}
 
 	@Override
@@ -63,7 +63,7 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
 		
 		
 		if(index == 0){
-			List<Object> elements = new ArrayList<>();
+			List<String> elements = new ArrayList<>();
 			for(E e : c){
 				elements.add(getSerializer().serialize(e));
 			}
@@ -88,12 +88,12 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
               + "end;" +
                 "return 1;",Boolean.class);
 		
-		List<Object> elements = new ArrayList<>(c.size() + 1);
+		List<String> elements = new ArrayList<>(c.size() + 1);
 		elements.add(String.valueOf(index));
         for(E e : c){
         	elements.add(getSerializer().serialize(e));
         }
-		return (boolean) getJedisson().getRedisTemplate().execute(script,Collections.<Object>singletonList(getName()),
+		return getJedisson().getRedisTemplate().execute(script,Collections.<String>singletonList(getName()),
 				elements.toArray());
 	}
 
@@ -103,8 +103,8 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
 				"local v = redis.call('lindex', KEYS[1], ARGV[1]); " +
                 "redis.call('lset', KEYS[1], ARGV[1], ARGV[2]); " +
                 "return v",String.class);
-		return (E) getSerializer().deserialize((String) getJedisson().getRedisTemplate().execute(script, 
-				Collections.<Object>singletonList(getName()), String.valueOf(index),getSerializer().serialize(element)));
+		return getSerializer().deserialize(getJedisson().getRedisTemplate().execute(script, 
+				Collections.<String>singletonList(getName()), String.valueOf(index),getSerializer().serialize(element)));
 	}
 
 	protected void fastSet(int index,E element){
@@ -119,14 +119,14 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
 	@Override
 	public E remove(final int index) {
 		if(index == 0){
-			return (E) getSerializer().deserialize((String) getJedisson().getRedisTemplate().opsForList().leftPop(getName()));
+			return getSerializer().deserialize(getJedisson().getRedisTemplate().opsForList().leftPop(getName()));
 		}
 		RedisScript<String> script = new DefaultRedisScript<>(
 				"local v = redis.call('lindex', KEYS[1], ARGV[1]); " +
                 "redis.call('lset', KEYS[1], ARGV[1], 'DELETED_BY_JEDISSON');" +
                 "redis.call('lrem', KEYS[1], 1, 'DELETED_BY_JEDISSON');" +
                 "return v",String.class);
-		return (E) getSerializer().deserialize((String) getJedisson().getRedisTemplate().execute(
+		return getSerializer().deserialize(getJedisson().getRedisTemplate().execute(
 				script, Arrays.asList(new String[]{getName()}), String.valueOf(index)));
 	}
 
@@ -148,7 +148,7 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
                     "end " +
                 "end " +
                 "return -1",Long.class);
-		return ((Long) getJedisson().getRedisTemplate().<Long>execute(script, Arrays.asList(new String[]{getName()}), 
+		return ((Long) getJedisson().getRedisTemplate().execute(script, Arrays.asList(new String[]{getName()}), 
 				getSerializer().serialize((E) o))).intValue();
 	}
 
@@ -241,7 +241,7 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
                 "end " +
             "end " +
             "return #ARGV == 0 and 1 or 0",Boolean.class);
-		return (boolean) getJedisson().getRedisTemplate().execute(script, Collections.<Object>singletonList(getName()), elements);
+		return getJedisson().getRedisTemplate().execute(script, Collections.<String>singletonList(getName()), elements);
 	}
 
 	@Override
@@ -263,8 +263,8 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
             +"end "
            + "return v ",Boolean.class);
 		
-		return (boolean) getJedisson().getRedisTemplate().execute(script, 
-				Collections.<Object>singletonList(getName()), elements.toArray());
+		return getJedisson().getRedisTemplate().execute(script, 
+				Collections.<String>singletonList(getName()), elements.toArray());
 	}
 
 	@Override
@@ -297,7 +297,7 @@ public class JedissonList<E> extends AbstractJedissonList<E>{
                      + "i = i + 1 "
                 + "end "
                 + "return changed ",Boolean.class);
-		return (boolean) getJedisson().getRedisTemplate().execute(script, Collections.singletonList(getName()), elements.toArray());
+		return getJedisson().getRedisTemplate().execute(script, Collections.singletonList(getName()), elements.toArray());
 	}
 
 	@Override
