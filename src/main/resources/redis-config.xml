@@ -42,5 +42,5 @@
 		</property>
 	</bean>
 	
-	<bean id="beanLocator" class="com.ericsson.xn.jedisson.common.BeanLocator"/>
+	<bean id="beanLocator" class="org.jedisson.common.BeanLocator"/>
 </beans>  

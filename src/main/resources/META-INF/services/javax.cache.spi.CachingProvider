@@ -1,1 +1,1 @@
-com.ericsson.xn.jedisson.cache.JedissonCachingProvider
+org.jedisson.cache.JedissonCachingProvider
