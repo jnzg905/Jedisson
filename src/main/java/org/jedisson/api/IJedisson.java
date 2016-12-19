@@ -13,4 +13,5 @@ public interface IJedisson {
 	public JedissonLock getLock(final String name);
 	
 	public IJedissonPubSub getPubSub(final String name, IJedissonSerializer serializer);
+	
 }

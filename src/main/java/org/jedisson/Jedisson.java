@@ -14,12 +14,13 @@ import org.jedisson.pubsub.JedissonPubSub;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 
 public class Jedisson implements IJedisson{	
-	private final RedisTemplate<String,String> redisTemplate;
+	private final RedisTemplate redisTemplate;
 	
-	protected Jedisson(final RedisTemplate<String,String> redisTemplate) {
+	protected Jedisson(final RedisTemplate redisTemplate) {
 		this.redisTemplate = redisTemplate;
 	}
 
@@ -27,11 +28,11 @@ public class Jedisson implements IJedisson{
 		return getJedisson(BeanLocator.getBean(RedisTemplate.class));
 	}
 	
-	public static Jedisson getJedisson(RedisTemplate<String,String> redisTemplate) {
+	public static Jedisson getJedisson(RedisTemplate redisTemplate) {
 		return new Jedisson(redisTemplate);
 	}
 
-	public RedisTemplate<String,String> getRedisTemplate(){
+	public RedisTemplate getRedisTemplate(){
 		return redisTemplate;
 	}
 	
@@ -51,6 +52,6 @@ public class Jedisson implements IJedisson{
 
 	@Override
 	public JedissonLock getLock(String name) {
-		return JedissonLock.getLock(name, this);
+		return new JedissonLock(name, this);
 	}
 }

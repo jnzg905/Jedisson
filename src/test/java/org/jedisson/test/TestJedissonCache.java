@@ -12,6 +12,7 @@ import java.util.Set;
 import javax.cache.Cache;
 import javax.cache.CacheManager;
 import javax.cache.Caching;
+import javax.cache.configuration.Factory;
 import javax.cache.configuration.MutableConfiguration;
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
@@ -26,6 +27,10 @@ import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 
 public class TestJedissonCache extends BaseTest{
 
@@ -384,6 +389,18 @@ public class TestJedissonCache extends BaseTest{
 		oldValue.setName("not_exists");
 		oldValue.setAge(9);
 		Assert.assertEquals(false, cache.replace(oldValue.getName(), oldValue, newValue));
+	}
+	
+	@Test
+	public void testFastJsonExpiredFactory(){
+		Factory factory = CreatedExpiryPolicy.factoryOf(Duration.ONE_MINUTE);
+		
+		JdkSerializationRedisSerializer serializer = new JdkSerializationRedisSerializer();
+		byte[] bytes = serializer.serialize(factory);
+		
+		String str = new String(bytes);
+		
+		String obj = JSON.toJSONString(factory);
 	}
 }
 

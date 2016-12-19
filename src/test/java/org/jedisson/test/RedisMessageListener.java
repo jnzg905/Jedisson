@@ -12,7 +12,7 @@ public class RedisMessageListener implements MessageListener{
 	private IJedissonSerializer<TestObject> serializer = new JedissonFastJsonSerializer<TestObject>(TestObject.class);
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
-		TestObject test = serializer.deserialize(new String(message.getBody()));
+		TestObject test = serializer.deserialize(message.getBody());
 		System.out.println(Thread.currentThread().getId() + ":" + JSON.toJSONString(test));
 		
 		

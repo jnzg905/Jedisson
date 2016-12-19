@@ -429,6 +429,5 @@ public class JedissonListTest extends BaseTest{
 			e.printStackTrace();
 		}
 		
-		
 	}
 }

@@ -195,7 +195,7 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 
 		public void onMessage(Message message, byte[] pattern) {
 			for(final IJedissonMessageListener<T> listener : listeners){
-				final T t = listener.getSerializer().deserialize(message.toString());
+				final T t = listener.getSerializer().deserialize(message.getBody());
 				taskExecutor.submit(new Runnable(){
 
 					@Override

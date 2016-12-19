@@ -18,6 +18,7 @@ import org.jedisson.common.JedissonObject;
 import org.jedisson.lock.JedissonLock;
 import org.jedisson.map.JedissonHashMap;
 import org.jedisson.serializer.JedissonFastJsonSerializer;
+import org.jedisson.serializer.JedissonJdkSerializer;
 import org.jedisson.serializer.JedissonStringSerializer;
 
 public class JedissonCacheManager extends JedissonObject implements javax.cache.CacheManager{
@@ -46,11 +47,11 @@ public class JedissonCacheManager extends JedissonObject implements javax.cache.
 		this.classLoader = classLoader;
 		this.props = props == null ? new Properties() : props;
 		
-		lock = getJedisson().getLock(getName() + ":Lock");
+		lock = getJedisson().getLock(getName());
 		
 		cacheConfigurations = getJedisson().getMap(getName(), 
 				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<JedissonCacheConfiguration>(JedissonCacheConfiguration.class));
+				new JedissonJdkSerializer<JedissonCacheConfiguration>());
 	}
 	
 	@Override

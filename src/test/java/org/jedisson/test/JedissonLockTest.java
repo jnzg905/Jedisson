@@ -1,11 +1,8 @@
 package org.jedisson.test;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -22,7 +19,7 @@ public class JedissonLockTest extends BaseTest{
 		final CountDownLatch latch = new CountDownLatch(100);
 		
 		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		ExecutorService executor = Executors.newFixedThreadPool(1);
+		ExecutorService executor = Executors.newFixedThreadPool(10);
 		
 		for(int i = 0; i < 100; i++){
 			final JedissonLock lock = jedisson.getLock("my_lock");

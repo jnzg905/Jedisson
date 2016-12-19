@@ -40,6 +40,11 @@
 		<property name="defaultSerializer">
 			<bean class="org.springframework.data.redis.serializer.StringRedisSerializer" />
 		</property>
+		<property name="scriptExecutor">
+			<bean class="org.jedisson.common.JedissonScriptExecutor">
+				<constructor-arg name="template" ref="redisTemplate"/>
+			</bean>
+		</property>
 	</bean>
 	
 	<bean id="beanLocator" class="org.jedisson.common.BeanLocator"/>

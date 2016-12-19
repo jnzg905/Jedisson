@@ -38,8 +38,7 @@ public class JedissonCacheConfiguration<K,V> implements CompleteConfiguration<K,
 
 	protected Factory<ExpiryPolicy> expiryPolicyFactory;
 	
-	protected HashSet<CacheEntryListenerConfiguration<K,
-    V>> listenerConfigurations;
+	protected HashSet<CacheEntryListenerConfiguration<K,V>> listenerConfigurations;
 	
 	private IJedissonSerializer<K> keySerializer;
 	
