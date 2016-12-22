@@ -27,10 +27,8 @@ public class JedissonHashMapTest extends BaseTest{
 
 	@Before
 	public void testBegin(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",String.class,TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = new TestObject();
@@ -44,19 +42,19 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@After
 	public void testEnd(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		map.clear();
 	}
 	
 	@Test
 	public void testJedissonHashMapPut(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		long startTime = System.currentTimeMillis();
 		System.out.println("begin:" + startTime);
@@ -76,10 +74,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapPutAll(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		long startTime = System.currentTimeMillis();
 		System.out.println("begin:" + startTime);
@@ -102,10 +100,10 @@ public class JedissonHashMapTest extends BaseTest{
 	}
 	@Test
 	public void testJedissonHashMapGet(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = map.get("test" + i);
@@ -115,10 +113,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapKeyIterator(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		Iterator<String> iter = map.keySet().iterator();
 		while(iter.hasNext()){
@@ -130,10 +128,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapEntryIterator(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		Iterator<Entry<String,TestObject>> iter = map.entrySet().iterator();
 		while(iter.hasNext()){
@@ -144,10 +142,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapValues(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		for(TestObject test : map.values()){
 			System.out.println(JSON.toJSONString(test));
@@ -156,10 +154,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapKeyIteratorRemove(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		Iterator<String> iter = map.keySet().iterator();
 		while(iter.hasNext()){
 			String key = iter.next();
@@ -173,10 +171,10 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapEntryIteratorRemove(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		Iterator<Entry<String,TestObject>> iter = map.entrySet().iterator();
 		while(iter.hasNext()){
 			Entry<String,TestObject> entry = iter.next();
@@ -189,14 +187,14 @@ public class JedissonHashMapTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMapToMap(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,JedissonHashMap> map = jedisson.getMap("mapmap",
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<JedissonHashMap>(JedissonHashMap.class));
+				String.class,
+				JedissonHashMap.class);
 		
 		JedissonHashMap<String,TestObject> valMap = jedisson.getMap("valMap", 
-				new JedissonStringSerializer(),
-				new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+				String.class,
+				TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = new TestObject();

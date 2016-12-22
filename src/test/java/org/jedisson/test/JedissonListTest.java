@@ -25,8 +25,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Before
 	public void testBegin(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList",new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = new TestObject();
@@ -40,22 +40,22 @@ public class JedissonListTest extends BaseTest{
 	
 	@After
 	public void testEnd(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList",new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		list.clear();
 	}
 	
 	@Test
 	public void testJedissonListAdd(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList",new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		Assert.assertEquals(10, list.size());
 	}
 	
 	@Test
 	public void testJedissonListIerator(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 	
 		System.out.println("----------test foreach----------");
 		for(TestObject v : list){
@@ -78,15 +78,15 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonSize(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		Assert.assertEquals(10, list.size());
 	}
 	
 	@Test
 	public void tetsJedissonClear(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		list.clear();
 		
 		Assert.assertEquals(0, list.size());
@@ -94,16 +94,16 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonIsEmpty(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		Assert.assertEquals(false, list.isEmpty());
 	}
 	
 	@Test
 	public void testJedissonContains(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		TestObject test = new TestObject();
 		test.setName("test" + 2);
@@ -115,9 +115,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddFirst(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
-		
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		TestObject test = new TestObject();
 		test.setName("first" + 0);
 		test.setAge(0);
@@ -131,8 +130,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddLast(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		TestObject test = new TestObject();
 		test.setName("last" + 0);
@@ -146,8 +145,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddMiddle(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		TestObject test = new TestObject();
 		test.setName("middle" + 0);
@@ -161,8 +160,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddAll(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> tests = new ArrayList<>();
 		for(int i = 0; i < 10; i++){
@@ -180,8 +179,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddAllFirst(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> tests = new ArrayList<>();
 		for(int i = 0; i < 10; i++){
@@ -200,8 +199,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddAllLast(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> tests = new ArrayList<>();
 		for(int i = 0; i < 10; i++){
@@ -220,8 +219,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonAddAllMiddle(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> tests = new ArrayList<>();
 		for(int i = 0; i < 10; i++){
@@ -239,8 +238,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonIndexOf(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = new TestObject();
@@ -255,8 +254,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonGet(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		for(int i = 0 ; i < 10; i++){
 			TestObject test = list.get(i);
@@ -266,8 +265,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonLastIndexOf(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		for(int i = 0 ; i < 10; i++){
 			TestObject test = new TestObject();
@@ -282,8 +281,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonListIterator(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		int i = 1;
 		ListIterator<TestObject> iter = list.listIterator(i);
@@ -295,8 +294,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonRemove(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		TestObject test0 = list.remove(0);
 		Assert.assertEquals("test0", test0.getName());
@@ -319,8 +318,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonRemoveAll(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> subList = new ArrayList<>();
 		for(int i = 0; i < 5; i++){
@@ -332,8 +331,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonRetainAll(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		List<TestObject> subList = new ArrayList<>();
 		for(int i = 0; i < 5; i++){
@@ -347,8 +346,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonSet(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		TestObject test = new TestObject();
 		test.setName("testSet1");
@@ -374,8 +373,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonToArray(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		
 		Object[] objects = list.toArray();
 		Assert.assertEquals(10, objects.length);
@@ -389,8 +388,8 @@ public class JedissonListTest extends BaseTest{
 	
 	@Test
 	public void testJedissonMultiThread(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
-		final JedissonList<TestObject> list = jedisson.getList("myList", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
+		IJedisson jedisson = Jedisson.getJedisson();
+		final JedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
 		final int count = 1000;
 		Thread thread1 = new Thread(){
 

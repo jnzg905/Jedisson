@@ -12,6 +12,15 @@ import org.springframework.data.redis.serializer.SerializationException;
 
 public class JedissonJdkSerializer<T> extends JedissonAbstractSerializer<T>{
 
+	public JedissonJdkSerializer(){
+		this(null);
+	}
+	
+	public JedissonJdkSerializer(Class<T> clss) {
+		super(clss);
+		// TODO Auto-generated constructor stub
+	}
+
 	@Override
 	public byte[] serialize(T t) throws SerializationException {
 		if(t == null){

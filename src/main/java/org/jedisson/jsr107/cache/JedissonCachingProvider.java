@@ -1,4 +1,4 @@
-package org.jedisson.cache;
+package org.jedisson.jsr107.cache;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -49,7 +49,7 @@ public class JedissonCachingProvider implements javax.cache.spi.CachingProvider{
         	synchronized(uriMap){
         		cacheManager = uriMap.get(uri);
         		if(cacheManager == null){
-        			cacheManager = new JedissonCacheManager(uri,this,classLoader,properties);
+        			cacheManager = new JedissonJsr107CacheManager(uri,this,classLoader,properties);
         			uriMap.put(uri, cacheManager);
         		}
         	}

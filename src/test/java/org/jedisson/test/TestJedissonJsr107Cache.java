@@ -32,7 +32,7 @@ import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
-public class TestJedissonCache extends BaseTest{
+public class TestJedissonJsr107Cache extends BaseTest{
 
 	@Before
 	public void testBegin(){
@@ -402,5 +402,7 @@ public class TestJedissonCache extends BaseTest{
 		
 		String obj = JSON.toJSONString(factory);
 	}
+	
+
 }
 

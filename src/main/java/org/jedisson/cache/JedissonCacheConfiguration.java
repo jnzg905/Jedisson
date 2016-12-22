@@ -1,36 +1,32 @@
 package org.jedisson.cache;
 
-import java.util.HashSet;
+import java.io.Serializable;
 
-import javax.cache.configuration.CacheEntryListenerConfiguration;
-import javax.cache.configuration.CompleteConfiguration;
-import javax.cache.configuration.Configuration;
 import javax.cache.configuration.Factory;
 import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.integration.CacheLoader;
 import javax.cache.integration.CacheWriter;
 
+import org.jedisson.api.IJedissonCacheConfiguration;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.jedisson.serializer.JedissonStringSerializer;
 
-public class JedissonCacheConfiguration<K,V> implements CompleteConfiguration<K,V>{
-
-	protected String name;
+public class JedissonCacheConfiguration<K,V> implements IJedissonCacheConfiguration<K,V>,Serializable {
 	
 	protected Class<K> keyType;
 	
 	protected Class<V> valueType;
 	
-	protected boolean isReadThrough;
+	protected boolean isReadThrough = false;
 	
-	protected boolean isWriteThrough;
+	protected boolean isWriteThrough = false;
 
-	protected boolean isStatisticsEnabled;
+	protected boolean isStatisticsEnabled = false;
 
-	protected boolean isStoreByValue;
+	protected boolean isStoreByValue = false;
 
-	protected boolean isManagementEnabled;
+	protected boolean isManagementEnabled = false;
 	
 	protected Factory<CacheLoader<K, V>> cacheLoaderFactory;
 	
@@ -38,177 +34,135 @@ public class JedissonCacheConfiguration<K,V> implements CompleteConfiguration<K,
 
 	protected Factory<ExpiryPolicy> expiryPolicyFactory;
 	
-	protected HashSet<CacheEntryListenerConfiguration<K,V>> listenerConfigurations;
-	
 	private IJedissonSerializer<K> keySerializer;
 	
 	private IJedissonSerializer<V> valueSerializer;
 	
-	public JedissonCacheConfiguration(){
-		
-	}
-	
-	public JedissonCacheConfiguration(final String name, final CompleteConfiguration<K,V> configuration){
-		this.name = name;
-		keyType = configuration.getKeyType();
-		valueType = configuration.getValueType();
-		isReadThrough = configuration.isReadThrough();
-		isWriteThrough = configuration.isWriteThrough();
-		isStatisticsEnabled = configuration.isStatisticsEnabled();
-		isStoreByValue = configuration.isStoreByValue();
-		isManagementEnabled = configuration.isManagementEnabled();
-		cacheLoaderFactory = configuration.getCacheLoaderFactory();
-		cacheWriterFactory = configuration.getCacheWriterFactory();
-		expiryPolicyFactory = configuration.getExpiryPolicyFactory();
-		listenerConfigurations = (HashSet<CacheEntryListenerConfiguration<K, V>>) configuration.getCacheEntryListenerConfigurations();
-		
-		if(keyType.equals(String.class)){
-			keySerializer = (IJedissonSerializer<K>) new JedissonStringSerializer();
-		}else{
-			keySerializer = new JedissonFastJsonSerializer<K>(keyType);
-		}
-		
-		valueSerializer = new JedissonFastJsonSerializer<V>(valueType);
-	}
-	
-	public JedissonCacheConfiguration(final String name, final Configuration<K,V> configuration){
-		this.name = name;
-		keyType = configuration.getKeyType();
-		valueType = configuration.getValueType();
-		isStoreByValue = configuration.isStoreByValue();
-		
-		if(keyType.equals(String.class)){
-			keySerializer = (IJedissonSerializer<K>) new JedissonStringSerializer();
-		}else{
-			keySerializer = new JedissonFastJsonSerializer<K>(keyType);
-		}
-		
-		valueSerializer = new JedissonFastJsonSerializer<V>(valueType);
-	}
-	
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
 	@Override
 	public Class<K> getKeyType() {
+		// TODO Auto-generated method stub
 		return keyType;
 	}
 
 	@Override
 	public Class<V> getValueType() {
+		// TODO Auto-generated method stub
 		return valueType;
 	}
 
 	@Override
-	public boolean isStoreByValue() {
-		return isStoreByValue;
-	}
-
-	@Override
 	public boolean isReadThrough() {
+		// TODO Auto-generated method stub
 		return isReadThrough;
 	}
 
 	@Override
 	public boolean isWriteThrough() {
+		// TODO Auto-generated method stub
 		return isWriteThrough;
 	}
 
 	@Override
 	public boolean isStatisticsEnabled() {
+		// TODO Auto-generated method stub
 		return isStatisticsEnabled;
 	}
 
 	@Override
 	public boolean isManagementEnabled() {
+		// TODO Auto-generated method stub
 		return isManagementEnabled;
 	}
 
 	@Override
-	public Iterable<CacheEntryListenerConfiguration<K, V>> getCacheEntryListenerConfigurations() {
-		return listenerConfigurations;
-	}
-
-	@Override
 	public Factory<CacheLoader<K, V>> getCacheLoaderFactory() {
+		// TODO Auto-generated method stub
 		return cacheLoaderFactory;
 	}
 
 	@Override
 	public Factory<CacheWriter<? super K, ? super V>> getCacheWriterFactory() {
+		// TODO Auto-generated method stub
 		return cacheWriterFactory;
 	}
 
 	@Override
 	public Factory<ExpiryPolicy> getExpiryPolicyFactory() {
+		// TODO Auto-generated method stub
 		return expiryPolicyFactory;
-	}
-
-	public void setListenerConfigurations(
-			HashSet<CacheEntryListenerConfiguration<K, V>> listenerConfigurations) {
-		this.listenerConfigurations = listenerConfigurations;
-	}
-
-	public void setKeyType(Class<K> keyType) {
-		this.keyType = keyType;
-	}
-
-	public void setValueType(Class<V> valueType) {
-		this.valueType = valueType;
-	}
-
-	public void setReadThrough(boolean isReadThrough) {
-		this.isReadThrough = isReadThrough;
-	}
-
-	public void setWriteThrough(boolean isWriteThrough) {
-		this.isWriteThrough = isWriteThrough;
-	}
-
-	public void setStatisticsEnabled(boolean isStatisticsEnabled) {
-		this.isStatisticsEnabled = isStatisticsEnabled;
-	}
-
-	public void setStoreByValue(boolean isStoreByValue) {
-		this.isStoreByValue = isStoreByValue;
-	}
-
-	public void setManagementEnabled(boolean isManagementEnabled) {
-		this.isManagementEnabled = isManagementEnabled;
-	}
-
-	public void setCacheLoaderFactory(Factory<CacheLoader<K, V>> cacheLoaderFactory) {
-		this.cacheLoaderFactory = cacheLoaderFactory;
-	}
-
-	public void setCacheWriterFactory(
-			Factory<CacheWriter<? super K, ? super V>> cacheWriterFactory) {
-		this.cacheWriterFactory = cacheWriterFactory;
-	}
-
-	public void setExpiryPolicyFactory(Factory<ExpiryPolicy> expiryPolicyFactory) {
-		this.expiryPolicyFactory = expiryPolicyFactory;
 	}
 
 	public IJedissonSerializer<K> getKeySerializer() {
 		return keySerializer;
 	}
 
-	public void setKeySerializer(IJedissonSerializer<K> keySerializer) {
-		this.keySerializer = keySerializer;
-	}
-
 	public IJedissonSerializer<V> getValueSerializer() {
 		return valueSerializer;
 	}
 
-	public void setValueSerializer(IJedissonSerializer<V> valueSerializer) {
-		this.valueSerializer = valueSerializer;
+	public boolean isStoreByValue() {
+		return isStoreByValue;
 	}
 
+	public JedissonCacheConfiguration<K,V> setStoreByValue(boolean isStoreByValue) {
+		this.isStoreByValue = isStoreByValue;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setKeyType(Class<K> keyType) {
+		this.keyType = keyType;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setValueType(Class<V> valueType) {
+		this.valueType = valueType;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setReadThrough(boolean isReadThrough) {
+		this.isReadThrough = isReadThrough;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setWriteThrough(boolean isWriteThrough) {
+		this.isWriteThrough = isWriteThrough;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setStatisticsEnabled(boolean isStatisticsEnabled) {
+		this.isStatisticsEnabled = isStatisticsEnabled;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setManagementEnabled(boolean isManagementEnabled) {
+		this.isManagementEnabled = isManagementEnabled;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setCacheLoaderFactory(Factory<CacheLoader<K, V>> cacheLoaderFactory) {
+		this.cacheLoaderFactory = cacheLoaderFactory;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setCacheWriterFactory(
+			Factory<CacheWriter<? super K, ? super V>> cacheWriterFactory) {
+		this.cacheWriterFactory = cacheWriterFactory;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setExpiryPolicyFactory(Factory<ExpiryPolicy> expiryPolicyFactory) {
+		this.expiryPolicyFactory = expiryPolicyFactory;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setKeySerializer(IJedissonSerializer<K> keySerializer) {
+		this.keySerializer = keySerializer;
+		return this;
+	}
+
+	public JedissonCacheConfiguration<K,V> setValueSerializer(IJedissonSerializer<V> valueSerializer) {
+		this.valueSerializer = valueSerializer;
+		return this;
+	}
+	
 }

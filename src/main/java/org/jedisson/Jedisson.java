@@ -1,48 +1,76 @@
 package org.jedisson;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import org.jedisson.api.IJedisson;
+import org.jedisson.api.IJedissonCache;
+import org.jedisson.api.IJedissonCacheConfiguration;
+import org.jedisson.api.IJedissonCacheManager;
+import org.jedisson.api.IJedissonConfiguration;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
+import org.jedisson.cache.JedissonCache;
 import org.jedisson.collection.JedissonList;
 import org.jedisson.common.BeanLocator;
 import org.jedisson.lock.JedissonLock;
+import org.jedisson.lock.JedissonReentrantLock;
 import org.jedisson.map.JedissonHashMap;
 import org.jedisson.pubsub.JedissonPubSub;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.jedisson.util.JedissonUtil;
 import org.springframework.data.redis.core.RedisTemplate;
 
 public class Jedisson implements IJedisson{	
-	private final RedisTemplate redisTemplate;
+	private static final String cacheManagerName = "DEFAULT_CACHEMANAGER";
 	
-	protected Jedisson(final RedisTemplate redisTemplate) {
-		this.redisTemplate = redisTemplate;
+	private IJedissonConfiguration jedissonConfiguration;
+	
+	private IJedissonCacheManager cacheManager;
+	
+	protected Jedisson(final IJedissonConfiguration configuration) {
+		jedissonConfiguration = configuration;
+		cacheManager = newCacheManager(configuration.getCacheManagerType());
 	}
 
 	public static Jedisson getJedisson(){
-		return getJedisson(BeanLocator.getBean(RedisTemplate.class));
+		return getJedisson(BeanLocator.getBean(IJedissonConfiguration.class));
 	}
 	
-	public static Jedisson getJedisson(RedisTemplate redisTemplate) {
-		return new Jedisson(redisTemplate);
+	public static Jedisson getJedisson(IJedissonConfiguration configuration) {
+		return new Jedisson(configuration);
 	}
 
-	public RedisTemplate getRedisTemplate(){
-		return redisTemplate;
+	public IJedissonConfiguration getConfiguration(){
+		return jedissonConfiguration;
 	}
 	
-	public <V> JedissonList<V> getList(final String name, IJedissonSerializer<V> serializer){
-		return new JedissonList<V>(name,serializer,this);
+	public <V> JedissonList<V> getList(final String name, Class<V> clss){
+		return getList(name,clss,JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(),clss));
+	}
+	
+	public <V> JedissonList<V> getList(final String name, Class<V> clss, IJedissonSerializer serializer){
+		return new JedissonList(name,clss, serializer,this);
 	}
 
 	@Override
-	public <K, V> JedissonHashMap<K, V> getMap(String name, IJedissonSerializer<K> keySerializer, IJedissonSerializer<V> valueSerializer) {
+	public <K, V> JedissonHashMap<K, V> getMap(String name, Class<K> keyClss, Class<V> valueClss) {
+		return getMap(
+				name,
+				keyClss,
+				valueClss,
+				JedissonUtil.newSerializer(getConfiguration().getKeySerializerType(),keyClss),
+				JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(),valueClss));
+	}
+	
+	@Override
+	public <K, V> JedissonHashMap<K, V> getMap(String name, Class<K> keyClass, Class<V> valueClass,
+			IJedissonSerializer keySerializer, IJedissonSerializer valueSerializer) {
 		return new JedissonHashMap<K,V>(name,keySerializer, valueSerializer,this);
+	}
+
+	@Override
+	public IJedissonPubSub getPubSub(String name) {
+		return getPubSub(name, JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(),null));
 	}
 
 	@Override
@@ -53,5 +81,29 @@ public class Jedisson implements IJedisson{
 	@Override
 	public JedissonLock getLock(String name) {
 		return new JedissonLock(name, this);
+	}
+
+	@Override
+	public JedissonReentrantLock getReentrantLock(String name) {
+		return new JedissonReentrantLock(name,this);
+	}
+
+	@Override
+	public <K, V> IJedissonCache<K, V> getCache(String name) {
+		return getCache(name, null);
+	}
+	
+	@Override
+	public <K, V> IJedissonCache<K, V> getCache(String name, IJedissonCacheConfiguration<K, V> cacheConfiguration) {
+		return cacheManager.getCache(name,cacheConfiguration);
+	}
+	
+	private IJedissonCacheManager newCacheManager(String cacheManagerType){
+		try{
+			Constructor constructor = Class.forName(cacheManagerType).getConstructor(String.class,Jedisson.class);
+			return (IJedissonCacheManager)constructor.newInstance(cacheManagerName, this);	
+		}catch(Exception e){
+			throw new IllegalStateException(e);
+		}
 	}
 }

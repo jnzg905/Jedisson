@@ -12,9 +12,11 @@ import org.jedisson.api.IJedissonMessageListener;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 
 public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 
@@ -87,8 +89,15 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 	}
 
 	@Override
-	public <T> void publish(String channelName, T message) {
-		getJedisson().getRedisTemplate().convertAndSend(channelName, serializer.serialize(message));
+	public <T> void publish(final String channelName, final T message) {
+		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+
+			@Override
+			public T doInRedis(RedisConnection connection) throws DataAccessException {
+				connection.publish(channelName.getBytes(), serializer.serialize(message));
+				return null;
+			}
+		});
 	}
 	
 	private SubscribeConnection getSubscribeConnection(final String channelName){
@@ -107,7 +116,7 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 		
 		public SubscribeConnection(int id){
 			this.id = id;
-			connection = getJedisson().getRedisTemplate().getConnectionFactory().getConnection();
+			connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
 		}
 		
 		public void subscribe(final String channelName){

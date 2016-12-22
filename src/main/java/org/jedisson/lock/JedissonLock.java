@@ -25,6 +25,8 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 
 	protected final static Long UNLOCK_FLAG = 0L;
 	
+	public static final long DEFAULT_LOCK_EXPIRATION_INTERVAL = 30000;
+ 
 	private final static String LOCK_PUBSUB_NAME = "JedissonLock_PubSub";
 	
 	protected static Map<String,InternalLockEntry> internalLocks = new ConcurrentHashMap<>();
@@ -53,17 +55,11 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 
 	@Override
 	public void lock(){
-		final Lock lock = lockEntry.getLock();
-		lockEntry.subscribe();
-		lock.lock();
 		try {
-			while(!tryAcquire()){
-				lockEntry.getCondition().awaitUninterruptibly();
-			}
-		} finally {
-			lockEntry.unSubscribe();
-			lock.unlock();
-		}
+            lockInterruptibly();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 	}
 
 	@Override
@@ -72,8 +68,16 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 		lockEntry.subscribe();
 		lock.lockInterruptibly();
 		try {
-			while(!tryAcquire()){
-				lockEntry.getCondition().await();
+			while(true){
+				Long ttl = tryAcquire(DEFAULT_LOCK_EXPIRATION_INTERVAL);
+				if(ttl == null){
+					return;
+				}
+				if(ttl >= 0){
+					lockEntry.getCondition().awaitNanos(TimeUnit.MILLISECONDS.toNanos(ttl));
+				}else{
+					lockEntry.getCondition().awaitUninterruptibly();
+				}
 			}
 		} finally {
 			lockEntry.unSubscribe();
@@ -87,7 +91,7 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 		final ReentrantLock lock = lockEntry.getLock();
 		if(lock.tryLock()){
 			try {
-				return tryAcquire();
+				return tryAcquire(DEFAULT_LOCK_EXPIRATION_INTERVAL) == null;
 			} finally {
 				lock.unlock();
 			}	
@@ -100,14 +104,22 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 			throws InterruptedException {
 		boolean ret = false;
 		long nanos = unit.toNanos(time);
+		long mills = unit.toMillis(time);
 		final ReentrantLock lock = lockEntry.getLock();
 		lockEntry.subscribe();
 		lock.lock();
 		try {
-			while(!(ret = tryAcquire()) && nanos > 0){
-				nanos = lockEntry.getCondition().awaitNanos(nanos);
+			while(true){
+				Long ttl = tryAcquire(mills);
+				if(ttl == null){
+					return true;
+				}
+				if(nanos > 0){
+					nanos = lockEntry.getCondition().awaitNanos(nanos);	
+				}else{
+					return false;
+				}
 			}
-			return ret;
 		} finally {
 			lockEntry.unSubscribe();
 			lock.unlock();
@@ -150,23 +162,22 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 		}
 	}
 	
-	protected boolean tryAcquire(){
-		RedisScript<Boolean> script = new DefaultRedisScript<>(
+	protected Long tryAcquire(long expiredTime){
+		RedisScript<Long> script = new DefaultRedisScript<>(
 				"if (redis.call('setnx', KEYS[1], ARGV[1]) == 1) then " +
 					"redis.call('pexpire', KEYS[1], ARGV[2]); " + 
- 					"return 1; " + 
+ 					"return nil; " + 
 				"else " + 
-					"return 0; " + 
+					"return redis.call('pttl',KEYS[1]); " + 
 				"end;",
-				Boolean.class);
+				Long.class);
 		
-		return (boolean) getJedisson().getRedisTemplate().execute(
+		return (Long) getJedisson().getConfiguration().getExecutor().execute(
 				script, 
 				(IJedissonSerializer)null,
-				(IJedissonSerializer)null,
-				Collections.<String>singletonList(getName()),
+				Collections.<byte[]>singletonList(getName().getBytes()),
 				serializer.serialize(uuid.toString()),
-				serializer.serialize(600000));
+				serializer.serialize(expiredTime));
 	}
 	
 	protected boolean release(){
@@ -183,11 +194,10 @@ public class JedissonLock extends JedissonObject implements IJedissonLock{
 					"return 1;" + 
 				"end;",Boolean.class);
 		
-		return (boolean) getJedisson().getRedisTemplate().execute(
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				(IJedissonSerializer)null,
-				(IJedissonSerializer)null,
-				Arrays.<Object>asList(getName(), getChannelName()),
+				Arrays.<byte[]>asList(getName().getBytes(), getChannelName().getBytes()),
 				serializer.serialize(uuid.toString()),
 				serializer.serialize(UNLOCK_FLAG));
 	}

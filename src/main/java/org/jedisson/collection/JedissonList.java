@@ -23,18 +23,18 @@ import org.springframework.util.Assert;
 
 public class JedissonList<E> extends AbstractJedissonCollection<E>{
 	
-	public JedissonList(final String name, IJedissonSerializer<E> serializer, final Jedisson jedisson){
-		super(name,serializer,jedisson);
+	public JedissonList(final String name, Class<E> clss, IJedissonSerializer serializer, final Jedisson jedisson){
+		super(name,clss,serializer,jedisson);
 	}
 	
 	@Override
 	public E get(final int index) {
-		return (E) getJedisson().getRedisTemplate().execute(new RedisCallback<E>(){
+		return (E) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<E>(){
 
 			@Override
 			public E doInRedis(RedisConnection connection)
 					throws DataAccessException {
-				return getSerializer().deserialize(connection.lIndex(getName().getBytes(), index));
+				return (E) getSerializer().deserialize(connection.lIndex(getName().getBytes(), index));
 			}
 			
 		});
@@ -42,7 +42,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 
 	@Override
 	public int size() {
-		return (int) getJedisson().getRedisTemplate().execute(new RedisCallback<Integer>(){
+		return (int) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Integer>(){
 
 			@Override
 			public Integer doInRedis(RedisConnection connection)
@@ -55,7 +55,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 
 	@Override
 	public boolean add(final E e) {
-		return (boolean) getJedisson().getRedisTemplate().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -73,7 +73,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 		Assert.notEmpty(c, "Values must not be 'null' or empty.");
 		
 		LinkedList<String> list = new LinkedList<>();
-		return (boolean) getJedisson().getRedisTemplate().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -101,7 +101,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 			final List<E> elements = new ArrayList<>();
 			elements.addAll(c);
 			Collections.reverse(elements);
-			return (boolean) getJedisson().getRedisTemplate().execute(new RedisCallback<Boolean>(){
+			return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
 
 				@Override
 				public Boolean doInRedis(RedisConnection connection)
@@ -118,9 +118,11 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 			});
 		}
 		
-		List<Object> params = new ArrayList<>(c.size() + 1);
-		params.add(index);
-		params.addAll(c);
+		List<byte[]> params = new ArrayList<>(c.size() + 1);
+		params.add(getSerializer().serialize(index));
+		for(E e : c){
+			params.add(getSerializer().serialize(e));
+		}
 		DefaultRedisScript<Boolean> script = new DefaultRedisScript<>(
 				"local index = table.remove(ARGV, 1); " + // index is the first parameter
                 "local size = redis.call('llen', KEYS[1]); " +
@@ -136,12 +138,11 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                   + "end "
               + "end;" +
                 "return 1;",Boolean.class);
-		
-		return (boolean) getJedisson().getRedisTemplate().execute(
+				
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()),
+				Collections.<byte[]>singletonList(getName().getBytes()),
 				params.toArray());
 	}
 
@@ -151,16 +152,15 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 				"local v = redis.call('lindex', KEYS[1], ARGV[1]); " +
                 "redis.call('lset', KEYS[1], ARGV[1], ARGV[2]); " +
                 "return v",byte[].class);
-		return (E) getJedisson().getRedisTemplate().execute(script,
+		return (E) getJedisson().getConfiguration().getExecutor().execute(script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()), 
-				index,
-				element);
+				Collections.<byte[]>singletonList(getName().getBytes()), 
+				getSerializer().serialize(index),
+				getSerializer().serialize(element));
 	}
 
 	protected void fastSet(final int index, final E element){
-		getJedisson().getRedisTemplate().execute(new RedisCallback<Object>(){
+		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -180,12 +180,12 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 	@Override
 	public E remove(final int index) {
 		if(index == 0){
-			return (E) getJedisson().getRedisTemplate().execute(new RedisCallback<E>(){
+			return (E) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<E>(){
 
 				@Override
 				public E doInRedis(RedisConnection connection)
 						throws DataAccessException {
-					return getSerializer().deserialize(connection.lPop(getName().getBytes()));
+					return (E) getSerializer().deserialize(connection.lPop(getName().getBytes()));
 				}
 				
 			});
@@ -195,17 +195,16 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                 "redis.call('lset', KEYS[1], ARGV[1], 'DELETED_BY_JEDISSON');" +
                 "redis.call('lrem', KEYS[1], 1, 'DELETED_BY_JEDISSON');" +
                 "return v",byte[].class);
-		return (E) getJedisson().getRedisTemplate().execute(
+		return (E) getJedisson().getConfiguration().getExecutor().execute(
 				script, 
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()), 
-				index);
+				Collections.<byte[]>singletonList(getName().getBytes()), 
+				getSerializer().serialize(index));
 	}
 
 	@Override
 	public boolean remove(final Object o) {
-		return (boolean) getJedisson().getRedisTemplate().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -229,12 +228,11 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                     "end " +
                 "end " +
                 "return -1",Long.class);		
-		return ((Long)getJedisson().getRedisTemplate().execute(
+		return ((Long)getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()), 
-				o)).intValue();
+				Collections.<byte[]>singletonList(getName().getBytes()), 
+				getSerializer().serialize((E) o))).intValue();
 	}
 
 	@Override
@@ -249,18 +247,17 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                     "end " +
                 "end " +
                 "return -1",Long.class);
-		return ((Long)getJedisson().getRedisTemplate().execute(
+		return ((Long)getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()),
-				o)).intValue();
+				Collections.<byte[]>singletonList(getName().getBytes()),
+				getSerializer().serialize((E) o))).intValue();
 	}
 
 	
 	@Override
 	public void clear() {
-		getJedisson().getRedisTemplate().execute(new RedisCallback<Object>(){
+		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -289,7 +286,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 
 	@Override
 	public Object[] toArray() {
-		return (Object[]) getJedisson().getRedisTemplate().execute(new RedisCallback<Object[]>(){
+		return (Object[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object[]>(){
 
 			@Override
 			public Object[] doInRedis(RedisConnection connection)
@@ -307,7 +304,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 
 	@Override
 	public <T> T[] toArray(final T[] a) {
-		return (T[]) getJedisson().getRedisTemplate().execute(new RedisCallback<T[]>(){
+		return (T[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T[]>(){
 
 			@Override
 			public T[] doInRedis(RedisConnection connection)
@@ -350,11 +347,10 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                 "end " +
             "end " +
             "return #ARGV == 0 and 1 or 0",Boolean.class);
-		return (boolean) getJedisson().getRedisTemplate().execute(
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()), 
+				Collections.<byte[]>singletonList(getName().getBytes()), 
 				c.toArray());
 	}
 
@@ -364,6 +360,10 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 			return true;
 		}
 		
+		List<byte[]> params = new LinkedList<>();
+		for(Object v : c){
+			params.add(getSerializer().serialize(v));
+		}
 		RedisScript<Boolean> script = new DefaultRedisScript<>(
 				"local v = 0; " +
                 "for i = 1, #ARGV, 1 do " + 
@@ -373,11 +373,10 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                 "end " + 
 				"return v ",Boolean.class);
 		
-		return (boolean) getJedisson().getRedisTemplate().execute(script,
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(script,
 				getSerializer(),
-				getSerializer(),
-				Collections.<String>singletonList(getName()), 
-				c.toArray());
+				Collections.<byte[]>singletonList(getName().getBytes()), 
+				params.toArray());
 	}
 
 	@Override
@@ -386,6 +385,10 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 			clear();
 		}
 		
+		List<byte[]> params = new LinkedList<>();
+		for(Object v : c){
+			params.add(getSerializer().serialize(v));
+		}
 		RedisScript<Boolean> script = new DefaultRedisScript<>(
 				"local changed = 0 " +
                 "local items = redis.call('lrange', KEYS[1], 0, -1) "
@@ -406,12 +409,11 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
                      + "i = i + 1 "
                 + "end "
                 + "return changed ",Boolean.class);
-		return (boolean) getJedisson().getRedisTemplate().execute(
+		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
 				script,
 				getSerializer(),
-				getSerializer(),
-				Collections.singletonList(getName()), 
-				c.toArray());
+				Collections.<byte[]>singletonList(getName().getBytes()), 
+				params.toArray());
 	}
 
 	@Override

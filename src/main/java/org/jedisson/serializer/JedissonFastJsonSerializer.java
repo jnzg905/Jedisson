@@ -9,14 +9,12 @@ import com.alibaba.fastjson.JSON;
 
 public class JedissonFastJsonSerializer<T> extends JedissonAbstractSerializer<T>{
  
-	private Class<T> clss;
-	
 	public JedissonFastJsonSerializer(){
 		this(null);
 	}
 	
 	public JedissonFastJsonSerializer(Class<T> clss){
-		this.clss = clss;
+		super(clss);
 	}
 	
 	@Override
@@ -26,10 +24,10 @@ public class JedissonFastJsonSerializer<T> extends JedissonAbstractSerializer<T>
 
 	@Override
 	public T deserialize(byte[] str) throws SerializationException {
-		if(clss == null){
+		if(getClss() == null){
 			throw new SerializationException("clss is null.");
 		}
-		return (T) (str != null ? JSON.parseObject(str,clss) : null);
+		return (T) (str != null ? JSON.parseObject(str,getClss()) : null);
 	}
 
 	@Override

@@ -18,7 +18,7 @@ public class JedissonPubSubTest extends BaseTest{
 
 	@Test
 	public void testSubscribe(){
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		IJedissonPubSub pubsub = jedisson.getPubSub("my_pubsub", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		
 		IJedissonMessageListener<TestObject> listener = new IJedissonMessageListener<TestObject>(){
@@ -56,7 +56,7 @@ public class JedissonPubSubTest extends BaseTest{
 	public void testMultiSubscribe() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(1000);
 		
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		IJedissonPubSub pubsub = jedisson.getPubSub("my_pubsub", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		
 		for(int i = 0; i < 1000; i++){
@@ -94,7 +94,7 @@ public class JedissonPubSubTest extends BaseTest{
 	public void testMultiPublish() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(1000);
 		
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		final IJedissonPubSub pubsub = jedisson.getPubSub("my_pubsub", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		
 		for(int i = 0; i < 1; i++){
@@ -144,7 +144,7 @@ public class JedissonPubSubTest extends BaseTest{
 	public void testMultiSubscribeAndPublish() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(1000);
 		
-		IJedisson jedisson = Jedisson.getJedisson(redisTemplate);
+		IJedisson jedisson = Jedisson.getJedisson();
 		final IJedissonPubSub pubsub = jedisson.getPubSub("my_pubsub", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		
 		for(int i = 0; i < 10; i++){

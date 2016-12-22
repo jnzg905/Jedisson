@@ -32,16 +32,29 @@
 		
 	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate"
 		lazy-init="false">
+		<property name="enableDefaultSerializer" value="false"/>
 		<property name="connectionFactory" ref="jedisConnectionFactory" />
-		<property name="keySerializer">
+		<!-- property name="keySerializer">
 			<bean id="keyRedisStringSerializer"
 				class="org.springframework.data.redis.serializer.StringRedisSerializer" />
 		</property>
+		<property name="defaultSerializer">
+			<bean class="org.springframework.data.redis.serializer.StringRedisSerializer" />
+		</property-->
 		<property name="scriptExecutor">
 			<bean class="org.jedisson.common.JedissonScriptExecutor">
 				<constructor-arg index="0" ref="redisTemplate"/>
 			</bean>
 		</property>
+	</bean>
+	<bean id="jedissonConfiguration" class="org.jedisson.JedissonConfiguration">
+		<property name="executor">
+			<bean class="org.jedisson.RedisTemplateExecutor">
+				<property name="redisTemplate" ref="redisTemplate"/>
+			</bean>
+		</property>
+		<property name="keySerializerType" value="org.jedisson.serializer.JedissonStringSerializer"/>
+		<property name="valueSerializerType" value="org.jedisson.serializer.JedissonFastJsonSerializer"/>
 	</bean>
 		
 	<bean id="beanLocator" class="org.jedisson.common.BeanLocator"/>
