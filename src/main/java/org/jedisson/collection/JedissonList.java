@@ -12,6 +12,7 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 import org.springframework.dao.DataAccessException;
@@ -21,7 +22,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.util.Assert;
 
-public class JedissonList<E> extends AbstractJedissonCollection<E>{
+public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJedissonList<E>{
 	
 	public JedissonList(final String name, Class<E> clss, IJedissonSerializer serializer, final Jedisson jedisson){
 		super(name,clss,serializer,jedisson);
@@ -72,7 +73,6 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 	public boolean addAll(final Collection<? extends E> c) {
 		Assert.notEmpty(c, "Values must not be 'null' or empty.");
 		
-		LinkedList<String> list = new LinkedList<>();
 		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
@@ -337,6 +337,10 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 			return true;
 		}
 		
+		List<byte[]> params = new LinkedList<>();
+		for(Object v : c){
+			params.add(getSerializer().serialize(v));
+		}
 		RedisScript<Boolean> script = new DefaultRedisScript<>(
 				"local items = redis.call('lrange', KEYS[1], 0, -1) " +
                 "for i=1, #items do " +
@@ -351,7 +355,7 @@ public class JedissonList<E> extends AbstractJedissonCollection<E>{
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
-				c.toArray());
+				params.toArray());
 	}
 
 	@Override

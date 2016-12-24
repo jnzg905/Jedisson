@@ -1,12 +1,13 @@
 package org.jedisson.collection;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 
-public abstract class AbstractJedissonCollection<V> extends JedissonObject implements List<V>{
+public abstract class AbstractJedissonCollection<V> extends JedissonObject implements Collection<V>{
 
 	private final IJedissonSerializer serializer;
 	

@@ -4,12 +4,15 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import org.jedisson.api.IJedisson;
+import org.jedisson.api.IJedissonBlockingQueue;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
 import org.jedisson.api.IJedissonCacheManager;
 import org.jedisson.api.IJedissonConfiguration;
+import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
+import org.jedisson.blockingqueue.JedissonBlockingQueue;
 import org.jedisson.cache.JedissonCache;
 import org.jedisson.collection.JedissonList;
 import org.jedisson.common.BeanLocator;
@@ -22,6 +25,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 public class Jedisson implements IJedisson{	
 	private static final String cacheManagerName = "DEFAULT_CACHEMANAGER";
+	
+	private volatile static Jedisson jedisson;
 	
 	private IJedissonConfiguration jedissonConfiguration;
 	
@@ -37,18 +42,25 @@ public class Jedisson implements IJedisson{
 	}
 	
 	public static Jedisson getJedisson(IJedissonConfiguration configuration) {
-		return new Jedisson(configuration);
+		if(jedisson == null){
+			synchronized(Jedisson.class){
+				if(jedisson == null){
+					jedisson = new Jedisson(configuration);			
+				}
+			}
+		}
+		return jedisson;
 	}
 
 	public IJedissonConfiguration getConfiguration(){
 		return jedissonConfiguration;
 	}
 	
-	public <V> JedissonList<V> getList(final String name, Class<V> clss){
+	public <V> IJedissonList<V> getList(final String name, Class<V> clss){
 		return getList(name,clss,JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(),clss));
 	}
 	
-	public <V> JedissonList<V> getList(final String name, Class<V> clss, IJedissonSerializer serializer){
+	public <V> IJedissonList<V> getList(final String name, Class<V> clss, IJedissonSerializer serializer){
 		return new JedissonList(name,clss, serializer,this);
 	}
 
@@ -105,5 +117,15 @@ public class Jedisson implements IJedisson{
 		}catch(Exception e){
 			throw new IllegalStateException(e);
 		}
+	}
+
+	@Override
+	public <V> IJedissonBlockingQueue<V> getBlockingQueue(String name, Class<V> valueClss) {
+		return getBlockingQueue(name,valueClss,JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(), valueClss));
+	}
+
+	@Override
+	public <V> IJedissonBlockingQueue<V> getBlockingQueue(String name, Class<V> valueClss, IJedissonSerializer serializer) {
+		return new JedissonBlockingQueue(name,JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(), valueClss), this);
 	}
 }

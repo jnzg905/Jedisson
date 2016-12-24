@@ -107,7 +107,7 @@ public class JedissonCacheTest extends BaseTest{
 	}
 	
 	@Test
-	public void testMultiThreadPut() throws InterruptedException{
+	public void testMultiThreadGetAndPut() throws InterruptedException{
 		final IJedisson jedisson = Jedisson.getJedisson();
 		
 		final CountDownLatch latch = new CountDownLatch(100);
@@ -116,27 +116,60 @@ public class JedissonCacheTest extends BaseTest{
 		
 		for(int i = 0; i < 100; i++){
 			final int c = i;
-			executor.submit(new Runnable(){
+			if(i % 2 == 0){
+				executor.submit(new Runnable(){
 
-				@Override
-				public void run() {
-					IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
-					for(int j = 0; j < 1000; j++){
-						TestObject test = new TestObject();
-						test.setName("MultiThreadPut:" + c + ":" + j);
-						test.setAge(j);
-						test.getFriends().add("friends" + j);
-						test.getChilden().put("child" + j, new TestObject("child" + j,j));
-						cache.put(test.getName(), test);
+					@Override
+					public void run() {
+						try{
+							IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
+							Iterator<Cache.Entry<String,TestObject>> iter = cache.iterator();
+							while(iter.hasNext()){
+								Cache.Entry<String,TestObject> entry = iter.next();
+								System.out.println(JSON.toJSONString(entry));
+							}	
+						}catch(Exception e){
+							e.printStackTrace();
+						}
+						finally{
+							latch.countDown();	
+						}
 					}
 					
-					latch.countDown();
-				}
-			});
+				});
+			}else{
+				executor.submit(new Runnable(){
+
+					@Override
+					public void run() {
+						try{
+							IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
+							for(int j = 0; j < 1000; j++){
+								TestObject test = new TestObject();
+								test.setName("MultiThreadPut:" + c + ":" + j);
+								test.setAge(j);
+								test.getFriends().add("friends" + j);
+								test.getChilden().put("child" + j, new TestObject("child" + j,j));
+								cache.put(test.getName(), test);
+							}	
+						}catch(Exception e){
+							e.printStackTrace();
+						}finally{
+							latch.countDown();	
+						}
+					}
+				});
+			}
+			
 		}
 		latch.await();
 		IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
-		Assert.assertEquals(100010, cache.size());
+		Assert.assertEquals(50010, cache.size());
+		
+	}
+	
+	@Test
+	public void testMultiThreadGet(){
 		
 	}
 }

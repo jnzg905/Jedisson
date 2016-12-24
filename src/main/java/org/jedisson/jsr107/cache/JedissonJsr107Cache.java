@@ -628,29 +628,29 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		if(isClosed()){
 			throw new IllegalStateException("Cache:" + getName() + " is closed.");
 		}
-		
-		return new EntryIterator((Cursor<java.util.Map.Entry<byte[], byte[]>>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Cursor<Map.Entry<byte[],byte[]>>>(){
-
-			@Override
-			public Cursor<java.util.Map.Entry<byte[], byte[]>> doInRedis(
-					RedisConnection connection) throws DataAccessException {
-				return connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build());
-			}
-		}));
+		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		return new EntryIterator(connection.hScan(getName().getBytes(),ScanOptions.scanOptions().build()), connection);
 	}
 	
 	class EntryIterator implements Iterator<Cache.Entry<K, V>>{
+		private RedisConnection connection;
+		
 		private Cursor<Map.Entry<byte[],byte[]>> cursor;
 		
 		private Cache.Entry<K,V> curr;
 		
-		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor){
+		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor, RedisConnection connection){
 			this.cursor = cursor;
+			this.connection = connection;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return cursor.hasNext();
+			boolean ret = cursor.hasNext();
+			if(!ret){
+				connection.close();
+			}
+			return ret;
 		}
 
 		@Override

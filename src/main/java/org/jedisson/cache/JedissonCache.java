@@ -337,20 +337,13 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 					throws DataAccessException {
 				return connection.del(getName().getBytes());
 			}
-			
 		});
 	}
 
 	@Override
 	public Iterator<Cache.Entry<K, V>> iterator() {
-		return new EntryIterator((Cursor<Map.Entry<byte[], byte[]>>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Cursor<Map.Entry<byte[],byte[]>>>(){
-
-			@Override
-			public Cursor<Map.Entry<byte[], byte[]>> doInRedis(
-					RedisConnection connection) throws DataAccessException {
-				return connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build());
-			}
-		}));
+		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		return new EntryIterator(connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build()),connection);
 	}
 
 	@Override
@@ -367,17 +360,24 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 	}
 
 	class EntryIterator implements Iterator<Cache.Entry<K, V>>{
+		private RedisConnection connection;
+		
 		private Cursor<Map.Entry<byte[],byte[]>> cursor;
 		
 		private Cache.Entry<K,V> curr;
 		
-		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor){
+		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor, RedisConnection connection){
 			this.cursor = cursor;
+			this.connection = connection;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return cursor.hasNext();
+			boolean ret = cursor.hasNext();
+			if(!ret){
+				connection.close();
+			}
+			return ret;
 		}
 
 		@Override

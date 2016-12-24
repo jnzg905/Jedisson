@@ -218,27 +218,13 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 	}
 	
 	protected Iterator<Entry<K,V>> newEntryIterator(){
-		return new EntryIterator((Cursor<java.util.Map.Entry<byte[], byte[]>>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Cursor<java.util.Map.Entry<byte[], byte[]>>>(){
-
-			@Override
-			public Cursor<java.util.Map.Entry<byte[], byte[]>> doInRedis(
-					RedisConnection connection) throws DataAccessException {
-				return connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build());
-			}
-			
-		}));
+		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		return new EntryIterator(connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build()),connection);
 	}
 	
 	protected Iterator<K> newKeyIterator() {
-       return new KeyIterator((Cursor<java.util.Map.Entry<byte[], byte[]>>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Cursor<Map.Entry<byte[],byte[]>>>(){
-
-		@Override
-		public Cursor<java.util.Map.Entry<byte[], byte[]>> doInRedis(
-				RedisConnection connection) throws DataAccessException {
-			return connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build());
-		}
-    	   
-       }));
+		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		return new KeyIterator(connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build()),connection);
     }
 
 	final class EntrySet extends AbstractSet<Entry<K,V>>{
@@ -301,16 +287,23 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
     }
 	
 	private class KeyIterator implements Iterator<K> {
+		private RedisConnection connection;
+		
 		private Cursor<Map.Entry<byte[],byte[]>> cursor;
 		private K curr;
 
-		public KeyIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor) {
+		public KeyIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor, RedisConnection connection) {
 			this.cursor = cursor;
+			this.connection = connection;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return cursor.hasNext();
+			boolean ret = cursor.hasNext();
+			if(!ret){
+				connection.close();
+			}
+			return ret;
 		}
 
 		@Override
@@ -327,17 +320,24 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 	}
 	 
 	private class EntryIterator implements Iterator<Map.Entry<K, V>>{
+		private RedisConnection connection;
+		
 		private Cursor<Map.Entry<byte[],byte[]>> cursor;
 		
 		private Map.Entry<K,V> curr;
 		
-		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor){
+		public EntryIterator(final Cursor<Map.Entry<byte[],byte[]>> cursor,RedisConnection connection){
 			this.cursor = cursor;
+			this.connection = connection;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return cursor.hasNext();
+			boolean ret = cursor.hasNext();
+			if(!ret){
+				connection.close();
+			}
+			return ret;
 		}
 
 		@Override
