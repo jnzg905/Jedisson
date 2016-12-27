@@ -1,10 +1,8 @@
 package org.jedisson.test;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -18,21 +16,22 @@ import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
 import javax.cache.spi.CachingProvider;
 
-import junit.framework.Assert;
-
-import org.jedisson.Jedisson;
-import org.jedisson.api.IJedisson;
-import org.jedisson.collection.JedissonList;
-import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 
-public class TestJedissonJsr107Cache extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=TestJedissonJsr107Cache.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class TestJedissonJsr107Cache{
 
 	@Before
 	public void testBegin(){

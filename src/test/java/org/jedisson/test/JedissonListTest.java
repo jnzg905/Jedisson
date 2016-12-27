@@ -5,24 +5,24 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
-import junit.framework.Assert;
-
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonList;
-import org.jedisson.collection.JedissonList;
-import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
-public class JedissonListTest extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=JedissonListTest.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class JedissonListTest{
 	
 	@Before
 	public void testBegin(){

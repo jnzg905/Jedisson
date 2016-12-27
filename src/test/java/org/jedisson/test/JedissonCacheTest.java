@@ -1,9 +1,7 @@
 package org.jedisson.test;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
@@ -13,21 +11,27 @@ import java.util.Set;
 
 import javax.cache.Cache;
 
-import junit.framework.Assert;
+
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.cache.JedissonCacheConfiguration;
-import org.jedisson.collection.JedissonList;
-import org.jedisson.lock.JedissonLock;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
-public class JedissonCacheTest extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=JedissonCacheTest.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class JedissonCacheTest{
 	@Before
 	public void testBegin(){
 		IJedisson jedisson = Jedisson.getJedisson();
@@ -144,7 +148,7 @@ public class JedissonCacheTest extends BaseTest{
 					public void run() {
 						try{
 							IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
-							for(int j = 0; j < 1000; j++){
+							for(int j = 0; j < 100; j++){
 								TestObject test = new TestObject();
 								test.setName("MultiThreadPut:" + c + ":" + j);
 								test.setAge(j);

@@ -22,6 +22,7 @@ import org.jedisson.map.JedissonHashMap;
 import org.jedisson.pubsub.JedissonPubSub;
 import org.jedisson.util.JedissonUtil;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 
 public class Jedisson implements IJedisson{	
 	private static final String cacheManagerName = "DEFAULT_CACHEMANAGER";

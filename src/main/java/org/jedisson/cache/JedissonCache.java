@@ -13,7 +13,6 @@ import javax.cache.Cache;
 import javax.cache.integration.CacheLoader;
 import javax.cache.integration.CacheWriter;
 
-import org.junit.Assert;
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
@@ -26,6 +25,7 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.util.Assert;
 
 public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache<K,V>{
 
@@ -69,8 +69,8 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 	
 		final IJedissonSerializer<K> keySerializer = configuration.getKeySerializer();
 		final IJedissonSerializer<V> valueSerializer = configuration.getValueSerializer();
-		Assert.assertNotNull(keySerializer);
-		Assert.assertNotNull(valueSerializer);
+		Assert.notNull(keySerializer);
+		Assert.notNull(valueSerializer);
 		
 		return (V) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<V>(){
 

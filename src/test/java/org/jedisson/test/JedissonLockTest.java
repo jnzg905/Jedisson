@@ -11,8 +11,15 @@ import org.jedisson.api.IJedisson;
 import org.jedisson.lock.JedissonLock;
 import org.jedisson.lock.JedissonReentrantLock;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
-public class JedissonLockTest extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=JedissonLockTest.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class JedissonLockTest{
 
 	private int index;
 	@Test

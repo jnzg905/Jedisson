@@ -8,7 +8,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 
 public class JedissonScriptExecutor<T> extends DefaultScriptExecutor<T>{
 
-	public JedissonScriptExecutor(RedisTemplate<T, ?> template) {
+	public JedissonScriptExecutor(RedisTemplate template) {
 		super(template);
 		// TODO Auto-generated constructor stub
 	}

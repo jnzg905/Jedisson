@@ -28,13 +28,16 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 	
 	private SubscribeConnection[] subscribeConnections;
 	
+	private ExecutorService connectionThreadPool;
+	
 	private final IJedissonSerializer serializer;
 	
 	public JedissonPubSub(String name, IJedissonSerializer serializer, Jedisson jedisson) {
 		super(name, jedisson);
 		this.serializer = serializer;
 		taskExecutor = Executors.newFixedThreadPool(10);
-		subscribeConnections = new SubscribeConnection[10];
+		subscribeConnections = new SubscribeConnection[2];
+		connectionThreadPool = Executors.newFixedThreadPool(2);
 	}
 
 	public static JedissonPubSub getPubSub(final String name, IJedissonSerializer serializer, Jedisson jedisson){
@@ -112,16 +115,18 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 
 		private final int id;
 		
-		private final RedisConnection connection;
+		private RedisConnection connection;
 		
 		public SubscribeConnection(int id){
 			this.id = id;
-			connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
 		}
 		
 		public void subscribe(final String channelName){
+			if(connection == null){
+				connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();	
+			}
 			if(!connection.isSubscribed()){
-				Thread subTask = new Thread("SubscribeThread-" + id){
+				connectionThreadPool.submit(new Runnable(){
 
 					@Override
 					public void run() {
@@ -139,12 +144,12 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 							}, channelName.getBytes());	
 						}catch(Exception e){
 							e.printStackTrace();
+						}finally{
+							connection.close();
 						}
-						
 					}
-				};
-				subTask.start();
-				
+					
+				});
 				while(!connection.isSubscribed()){
 					try {
 						Thread.sleep(100);

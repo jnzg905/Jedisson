@@ -5,25 +5,26 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import junit.framework.Assert;
+
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
-import org.jedisson.collection.JedissonList;
 import org.jedisson.map.JedissonHashMap;
-import org.jedisson.serializer.JedissonFastJsonSerializer;
-import org.jedisson.serializer.JedissonStringSerializer;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
-public class JedissonHashMapTest extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=JedissonHashMapTest.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class JedissonHashMapTest{
 
 	@Before
 	public void testBegin(){

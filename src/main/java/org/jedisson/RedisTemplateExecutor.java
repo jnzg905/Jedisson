@@ -4,14 +4,20 @@ import java.util.List;
 
 import org.jedisson.api.IJedissonRedisExecutor;
 import org.jedisson.api.IJedissonSerializer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.stereotype.Component;
 
 public class RedisTemplateExecutor implements IJedissonRedisExecutor{
 
 	private RedisTemplate redisTemplate;
+	
+	public RedisTemplateExecutor(RedisTemplate redisTemplate){
+		this.redisTemplate = redisTemplate;
+	}
 	
 	public RedisTemplate getRedisTemplate() {
 		return redisTemplate;

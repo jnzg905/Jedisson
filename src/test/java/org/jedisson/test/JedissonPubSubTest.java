@@ -2,8 +2,6 @@ package org.jedisson.test;
 
 import java.util.concurrent.CountDownLatch;
 
-import junit.framework.Assert;
-
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonMessageListener;
@@ -11,10 +9,17 @@ import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
-public class JedissonPubSubTest extends BaseTest{
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes=JedissonPubSubTest.class)
+@SpringBootApplication(scanBasePackages="org.jedisson")
+public class JedissonPubSubTest{
 
 	@Test
 	public void testSubscribe(){

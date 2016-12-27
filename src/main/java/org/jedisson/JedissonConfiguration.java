@@ -1,11 +1,7 @@
 package org.jedisson;
 
-import org.jedisson.api.IJedissonCacheManager;
 import org.jedisson.api.IJedissonConfiguration;
 import org.jedisson.api.IJedissonRedisExecutor;
-import org.jedisson.api.IJedissonSerializer;
-import org.jedisson.serializer.JedissonFastJsonSerializer;
-import org.jedisson.serializer.JedissonStringSerializer;
 
 public class JedissonConfiguration implements IJedissonConfiguration{
 
@@ -17,6 +13,9 @@ public class JedissonConfiguration implements IJedissonConfiguration{
 	
 	private String cacheManagerType = "org.jedisson.cache.JedissonCacheManager";
 	
+	public JedissonConfiguration(){
+		
+	}
 	@Override
 	public IJedissonRedisExecutor getExecutor() {
 		// TODO Auto-generated method stub
