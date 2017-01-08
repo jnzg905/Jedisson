@@ -1,14 +1,16 @@
 package org.jedisson.test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-
-
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
+import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonMap;
 import org.jedisson.map.JedissonHashMap;
 import org.junit.After;
 import org.junit.Assert;
@@ -17,10 +19,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
+@PropertySource("file:config/jedisson.properties")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonHashMapTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")
@@ -206,5 +210,42 @@ public class JedissonHashMapTest{
 		
 		map.clear();
 		valMap.clear();
+	}
+	
+	@Test
+	public void testJedissonAsyncMap() throws InterruptedException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		IJedissonMap<String,TestObject> map = jedisson.getMap("asyncMap",String.class,TestObject.class).withAsync();
+		
+		long startTime = System.currentTimeMillis();
+		List<IJedissonFuture<TestObject>> futures = new ArrayList<>();
+		for(int i = 0; i < 1000000; i++){
+			TestObject test = new TestObject();
+			test.setName("test" + i);
+			test.setAge(i);
+			test.getFriends().add("friends" + i);
+			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+			map.fastPut(test.getName(), test);
+		}
+		
+		map.future().get();
+		
+		Assert.assertEquals(1000000, map.size());
+		System.out.println("async put:" + (System.currentTimeMillis() - startTime));
+		
+		futures.clear();
+		
+		startTime = System.currentTimeMillis();
+		for(int i = 0; i < 1000000; i++){
+			map.get("test" + i);
+//			futures.add(map.future());
+		}
+		
+		TestObject test = (TestObject) map.future().get();
+//		for(IJedissonFuture<TestObject> future : futures){
+//			TestObject test = future.get();
+//		}
+		System.out.println("async get:" + (System.currentTimeMillis() - startTime));
+		map.clear();
 	}
 }

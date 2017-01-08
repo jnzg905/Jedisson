@@ -14,8 +14,10 @@ import javax.cache.integration.CacheLoader;
 import javax.cache.integration.CacheWriter;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonAsyncSupport;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 import org.jedisson.util.JedissonUtil;
@@ -31,12 +33,12 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 
 	private JedissonCacheConfiguration<K,V> configuration;
 	
-	private CacheLoader<K,V> cacheLoader;
+	protected CacheLoader<K,V> cacheLoader;
 	
-	private CacheWriter<K,V> cacheWriter;
+	protected CacheWriter<K,V> cacheWriter;
 	
 	public JedissonCache(String name, IJedissonCacheConfiguration<K,V> configuration, Jedisson jedisson) {
-		super("JedissonCache:" + name, jedisson);
+		super(name, jedisson);
 		this.configuration = (JedissonCacheConfiguration<K, V>) configuration;
 		if(this.configuration.getKeySerializer() == null){
 			this.configuration.setKeySerializer(JedissonUtil.newSerializer(
@@ -418,5 +420,22 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 			// TODO Auto-generated method stub
 			return null;
 		}
+	}
+
+	@Override
+	public IJedissonCache<K,V> withAsync() {
+		return new JedissonAsyncCache(getName(),getConfiguration(),getJedisson());
+	}
+
+	@Override
+	public boolean isAsync() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public <R> IJedissonFuture<R> future() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

@@ -12,8 +12,13 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonAsyncSupport;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonSerializer;
+import org.jedisson.async.JedissonCommand;
+import org.jedisson.async.JedissonCommand.LINDEX;
+import org.jedisson.async.JedissonFuture;
 import org.jedisson.common.JedissonObject;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -526,6 +531,23 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
                 hasBeenModified = true;
             }
 		};
+	}
+
+	@Override
+	public IJedissonList<E> withAsync() {
+		return new JedissonAsyncList(getName(),getClss(), getSerializer(),getJedisson());
+	}
+
+	@Override
+	public <R> IJedissonFuture<R> future() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean isAsync() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 	

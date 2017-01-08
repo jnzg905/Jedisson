@@ -6,7 +6,7 @@ import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 
-public abstract class AbstractJedissonMap<K,V> extends JedissonObject implements Map<K,V>{
+public abstract class AbstractJedissonMap<K,V> extends JedissonObject{
 	
 	private final IJedissonSerializer<K> keySerializer;
 	

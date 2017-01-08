@@ -1,6 +1,6 @@
 package org.jedisson.api;
 
-public interface IJedissonPubSub {
+public interface IJedissonPubSub extends IJedissonAsyncSupport{
 
 	public <T> void subscribe(final String topic, IJedissonMessageListener<T> messageListener);
 	

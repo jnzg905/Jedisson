@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.List;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonAsyncSupport;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 
@@ -26,5 +28,4 @@ public abstract class AbstractJedissonCollection<V> extends JedissonObject imple
 	public IJedissonSerializer getSerializer() {
 		return serializer;
 	}
-	
 }

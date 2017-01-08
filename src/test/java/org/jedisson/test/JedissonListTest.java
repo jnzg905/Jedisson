@@ -4,9 +4,15 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.api.IJedissonList;
 import org.junit.After;
 import org.junit.Assert;
@@ -15,10 +21,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
+@PropertySource("file:config/jedisson.properties")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonListTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")
@@ -428,6 +436,126 @@ public class JedissonListTest{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	@Test
+	public void testJedissonAsyncList() throws InterruptedException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		final IJedissonList<TestObject> list = jedisson.getList("asyncList",TestObject.class);
+		IJedissonList<TestObject> asyncList = list.withAsync();
+		
+		List<IJedissonFuture<Long>> futures = new ArrayList<>();
+		
+		long startTime = System.currentTimeMillis();
+		for(int i = 0; i < 1000000; i++){
+			TestObject test = new TestObject();
+			test.setName("test" + i);
+			test.setAge(i);
+			test.getFriends().add("friends" + i);
+			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+			asyncList.add(test);
+		}
+		System.out.println(System.currentTimeMillis() - startTime);
+		IJedissonFuture<Long> future = asyncList.future();
+		Long num = future.get();
+		System.out.println("async add:" + (System.currentTimeMillis() - startTime));
+		list.clear();
 		
 	}
+	
+	@Test
+	public void testJedissonAsyncListPerformance() throws InterruptedException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		final IJedissonList<TestObject> list = jedisson.getList("myList",TestObject.class);
+		
+		list.clear();
+//		long startTime = System.currentTimeMillis();
+//		for(int i = 0; i < 40000; i++){
+//			TestObject test = new TestObject();
+//			test.setName("test" + i);
+//			test.setAge(i);
+//			test.getFriends().add("friends" + i);
+//			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+//			list.add(test);
+//		}
+//		System.out.println("sync time:" + (System.currentTimeMillis() - startTime));
+//		
+		list.clear();
+		IJedissonList<TestObject> asyncList = list.withAsync();
+		long startTime = System.currentTimeMillis();
+		for(int i = 0; i < 100000; i++){
+			TestObject test = new TestObject();
+			test.setName("test" + i);
+			test.setAge(i);
+			test.getFriends().add("friends" + i);
+			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+			asyncList.add(test);
+		}
+		IJedissonFuture<Long> future = asyncList.future();
+		Long num = future.get();
+		Assert.assertEquals(100000, num.longValue());
+		System.out.println("async time:" + (System.currentTimeMillis() - startTime));
+		
+	}
+	
+	@Test
+	public void testJedissonAsyncListAddMultiThread() throws InterruptedException, ExecutionException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		final IJedissonList<TestObject> list = jedisson.getList("asyncList",TestObject.class);
+		list.clear();
+		IJedissonList<TestObject> asyncList = list.withAsync();
+		ExecutorService service = Executors.newFixedThreadPool(10);
+		
+		long startTime = System.currentTimeMillis();
+		List<Future> futures = new ArrayList<>();
+		for(int i = 0; i < 10; i++){
+			futures.add(service.submit(new Callable<Long>(){
+
+				@Override
+				public Long call() throws Exception {
+					long startTime = System.currentTimeMillis();
+					long id = Thread.currentThread().getId();
+					for(int i = 0; i < 10000; i++){
+						TestObject test = new TestObject();
+						test.setName(id + ":test" + i);
+						test.setAge(i);
+						test.getFriends().add("friends" + i);
+						test.getChilden().put("child" + i, new TestObject("child" + i,i));
+						asyncList.add(test);
+					}
+					IJedissonFuture<Long> future = asyncList.future();
+					Long num = future.get();
+					System.out.println("async time:" + (System.currentTimeMillis() - startTime));
+					return num;
+				}
+			}));
+		}
+		
+		for(Future future : futures){
+			System.out.println("put:" + future.get());
+		}
+		System.out.println("put:" + "size=" + list.size() + ",time=" + (System.currentTimeMillis() - startTime));
+	}
+	
+	@Test
+	public void testJedissonAsyncListGet() throws InterruptedException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		final IJedissonList<TestObject> list = jedisson.getList("asyncList",TestObject.class);
+		IJedissonList<TestObject> asyncList = list.withAsync();
+		
+		List<IJedissonFuture<TestObject>> futures = new ArrayList<>();
+		long startTime = System.currentTimeMillis();
+		int size = asyncList.size();
+		for(int i = 0; i < size; i++){
+			asyncList.get(i);
+			futures.add(asyncList.future());
+		}
+		for(IJedissonFuture<TestObject> future : futures){
+			TestObject test = future.get();
+//			System.out.println(JSON.toJSONString(test));
+		}
+		
+		System.out.println("async time:" + (System.currentTimeMillis() - startTime));
+	}
+	
 }

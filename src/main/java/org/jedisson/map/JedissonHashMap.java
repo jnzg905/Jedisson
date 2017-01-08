@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.HashMap;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonAsyncSupport;
+import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonMap;
 import org.jedisson.api.IJedissonSerializer;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -21,7 +24,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 
-public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
+public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJedissonMap<K,V>{
 	
 	public JedissonHashMap(String name, IJedissonSerializer<K> keySerializer, IJedissonSerializer valueSerializer,
 			Jedisson jedisson) {
@@ -146,7 +149,6 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 			public Object doInRedis(RedisConnection connection)
 					throws DataAccessException {
 				final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(m.size());
-
 				for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
 					hashes.put(getKeySerializer().serialize(entry.getKey()), getValueSerializer().serialize(entry.getValue()));
 				}
@@ -375,4 +377,39 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V>{
 			throw new UnsupportedOperationException();
 		}
     }
+
+	@Override
+	public IJedissonMap<K,V> withAsync() {
+		return new JedissonAsyncHashMap(getName(),getKeySerializer(),getValueSerializer(),getJedisson());
+	}
+
+	@Override
+	public boolean isAsync() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public <R> IJedissonFuture<R> future() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void fastPut(final K key, final V value) {
+		if (key == null || value == null) {
+			throw new NullPointerException();
+		}
+
+		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<V>(){
+
+			@Override
+			public V doInRedis(RedisConnection connection)
+					throws DataAccessException {
+				connection.hSet(getName().getBytes(), getKeySerializer().serialize(key), getValueSerializer().serialize(value));
+				return null;
+			}
+			
+		});
+	}
 }

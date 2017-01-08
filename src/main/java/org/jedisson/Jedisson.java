@@ -1,19 +1,19 @@
 package org.jedisson;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonBlockingQueue;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
 import org.jedisson.api.IJedissonCacheManager;
-import org.jedisson.api.IJedissonConfiguration;
 import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonPubSub;
+import org.jedisson.api.IJedissonRedisExecutor;
 import org.jedisson.api.IJedissonSerializer;
+import org.jedisson.async.JedissonAsyncService;
+import org.jedisson.autoconfiguration.JedissonConfiguration;
 import org.jedisson.blockingqueue.JedissonBlockingQueue;
-import org.jedisson.cache.JedissonCache;
 import org.jedisson.collection.JedissonList;
 import org.jedisson.common.BeanLocator;
 import org.jedisson.lock.JedissonLock;
@@ -21,28 +21,30 @@ import org.jedisson.lock.JedissonReentrantLock;
 import org.jedisson.map.JedissonHashMap;
 import org.jedisson.pubsub.JedissonPubSub;
 import org.jedisson.util.JedissonUtil;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
 
 public class Jedisson implements IJedisson{	
 	private static final String cacheManagerName = "DEFAULT_CACHEMANAGER";
 	
 	private volatile static Jedisson jedisson;
 	
-	private IJedissonConfiguration jedissonConfiguration;
+	private JedissonConfiguration jedissonConfiguration;
 	
 	private IJedissonCacheManager cacheManager;
 	
-	protected Jedisson(final IJedissonConfiguration configuration) {
+	private JedissonAsyncService asyncService;
+	
+	protected Jedisson(final JedissonConfiguration configuration) {
 		jedissonConfiguration = configuration;
+		asyncService = new JedissonAsyncService(this);
 		cacheManager = newCacheManager(configuration.getCacheManagerType());
+		
 	}
 
 	public static Jedisson getJedisson(){
-		return getJedisson(BeanLocator.getBean(IJedissonConfiguration.class));
+		return getJedisson(BeanLocator.getBean(JedissonConfiguration.class));
 	}
 	
-	public static Jedisson getJedisson(IJedissonConfiguration configuration) {
+	public static Jedisson getJedisson(JedissonConfiguration configuration) {
 		if(jedisson == null){
 			synchronized(Jedisson.class){
 				if(jedisson == null){
@@ -53,10 +55,15 @@ public class Jedisson implements IJedisson{
 		return jedisson;
 	}
 
-	public IJedissonConfiguration getConfiguration(){
+	@Override
+	public JedissonConfiguration getConfiguration(){
 		return jedissonConfiguration;
 	}
 	
+	public JedissonAsyncService getAsyncService() {
+		return asyncService;
+	}
+
 	public <V> IJedissonList<V> getList(final String name, Class<V> clss){
 		return getList(name,clss,JedissonUtil.newSerializer(getConfiguration().getValueSerializerType(),clss));
 	}

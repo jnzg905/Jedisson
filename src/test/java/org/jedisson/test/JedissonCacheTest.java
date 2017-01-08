@@ -1,7 +1,9 @@
 package org.jedisson.test;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
@@ -13,9 +15,15 @@ import javax.cache.Cache;
 
 
 
+
+
+
+
+
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonCache;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.cache.JedissonCacheConfiguration;
 import org.junit.After;
 import org.junit.Assert;
@@ -24,10 +32,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
+@PropertySource("file:config/jedisson.properties")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonCacheTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")
@@ -168,12 +178,39 @@ public class JedissonCacheTest{
 		}
 		latch.await();
 		IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
-		Assert.assertEquals(50010, cache.size());
+		Assert.assertEquals(5010, cache.size());
 		
 	}
 	
 	@Test
-	public void testMultiThreadGet(){
+	public void testJedissonAsyncCache() throws InterruptedException{
+		IJedisson jedisson = Jedisson.getJedisson();
+		IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
+		IJedissonCache<String,TestObject> asyncCache = cache.withAsync();
 		
+		long startTime = System.currentTimeMillis();
+		List<IJedissonFuture<TestObject>> futures = new ArrayList<>();
+		for(int i = 0; i < 1000000; i++){
+			TestObject test = new TestObject();
+			test.setName("test" + i);
+			test.setAge(i);
+			test.getFriends().add("friends" + i);
+			test.getChilden().put("child" + i, new TestObject("child" + i,i));
+			asyncCache.put(test.getName(), test);
+		}
+		asyncCache.future().get();
+		System.out.println("async put:" + (System.currentTimeMillis() - startTime));
+		startTime = System.currentTimeMillis();
+		for(int i = 0; i < 1000000; i++){
+			asyncCache.get("test" + i);
+//			futures.add(asyncCache.future());
+		}
+		
+		TestObject test = (TestObject) asyncCache.future().get();
+//		List<TestObject> results = new ArrayList<>();
+//		for(IJedissonFuture<TestObject> future : futures){
+//			results.add(future.get());
+//		}
+		System.out.println("async get:" + (System.currentTimeMillis() - startTime));
 	}
 }

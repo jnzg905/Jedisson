@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonFuture;
 import org.jedisson.api.IJedissonMessageListener;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
@@ -100,7 +101,7 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 				connection.publish(channelName.getBytes(), serializer.serialize(message));
 				return null;
 			}
-		});
+		});		
 	}
 	
 	private SubscribeConnection getSubscribeConnection(final String channelName){
@@ -109,6 +110,10 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 			subscribeConnections[index] = new SubscribeConnection(index);
 		}
 		return subscribeConnections[index];
+	}
+	
+	protected IJedissonSerializer getSerializer(){
+		return serializer;
 	}
 	
 	class SubscribeConnection{
@@ -228,5 +233,20 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 						
 		}
 
+	}
+
+	@Override
+	public IJedissonPubSub withAsync() {
+		return new JedissonAsyncPubSub(getName(),serializer,getJedisson());
+	}
+
+	@Override
+	public boolean isAsync() {
+		return false;
+	}
+
+	@Override
+	public <R> IJedissonFuture<R> future() {
+		return null;
 	}
 }

@@ -6,7 +6,7 @@ import java.util.Set;
 
 import javax.cache.Cache;
 
-public interface IJedissonCache<K,V>{
+public interface IJedissonCache<K,V> extends IJedissonAsyncSupport{
 	
 	public V get(K key);
 	

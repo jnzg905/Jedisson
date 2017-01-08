@@ -1,12 +1,14 @@
 package org.jedisson.api;
 
-import org.jedisson.collection.JedissonList;
+import org.jedisson.autoconfiguration.JedissonConfiguration;
 import org.jedisson.lock.JedissonLock;
 import org.jedisson.lock.JedissonReentrantLock;
 import org.jedisson.map.JedissonHashMap;
 
 public interface IJedisson {
 
+	public JedissonConfiguration getConfiguration();
+	
 	public <V> IJedissonList<V> getList(final String name, Class<V> clss);
 	
 	public <V> IJedissonList<V> getList(final String name, Class<V> clss, IJedissonSerializer serializer);

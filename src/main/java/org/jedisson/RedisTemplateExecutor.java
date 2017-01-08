@@ -48,4 +48,9 @@ public class RedisTemplateExecutor implements IJedissonRedisExecutor{
 		return redisTemplate.getConnectionFactory();
 	}
 
+	@Override
+	public List<Object> executePipeline(RedisCallback<?> callback, IJedissonSerializer<?> resultSerializer) {
+		return redisTemplate.executePipelined(callback, resultSerializer);
+	}
+
 }
