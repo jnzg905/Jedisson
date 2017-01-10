@@ -1,5 +1,7 @@
 package org.jedisson.blockingqueue;
 
+import java.util.concurrent.BlockingQueue;
+
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonBlockingQueue;
 import org.jedisson.api.IJedissonSerializer;

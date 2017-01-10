@@ -1,6 +1,7 @@
 package org.jedisson.test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.jedisson.Jedisson;
@@ -201,7 +202,7 @@ public class JedissonPubSubTest{
 	}
 	
 	@Test
-	public void testPublishAsync() throws InterruptedException{
+	public void testPublishAsync() throws InterruptedException, ExecutionException{
 		IJedisson jedisson = Jedisson.getJedisson();
 		IJedissonPubSub pubsub = jedisson.getPubSub("my_pubsub", new JedissonFastJsonSerializer<TestObject>(TestObject.class));
 		IJedissonPubSub asyncPubSub = pubsub.withAsync();
@@ -211,7 +212,7 @@ public class JedissonPubSubTest{
 			
 			@Override
 			public void onMessage(TestObject t) {
-				System.out.println(JSON.toJSONString(t));
+//				System.out.println(JSON.toJSONString(t));
 				num.incrementAndGet();
 				count.countDown();
 			}

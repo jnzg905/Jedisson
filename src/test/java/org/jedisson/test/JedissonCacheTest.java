@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Set;
@@ -20,10 +21,11 @@ import javax.cache.Cache;
 
 
 
+
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.api.IJedissonCache;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.cache.JedissonCacheConfiguration;
 import org.junit.After;
 import org.junit.Assert;
@@ -183,13 +185,13 @@ public class JedissonCacheTest{
 	}
 	
 	@Test
-	public void testJedissonAsyncCache() throws InterruptedException{
+	public void testJedissonAsyncCache() throws InterruptedException, ExecutionException{
 		IJedisson jedisson = Jedisson.getJedisson();
 		IJedissonCache<String,TestObject> cache = jedisson.getCache("myCache");
 		IJedissonCache<String,TestObject> asyncCache = cache.withAsync();
 		
 		long startTime = System.currentTimeMillis();
-		List<IJedissonFuture<TestObject>> futures = new ArrayList<>();
+		List<IJedissonPromise<TestObject>> futures = new ArrayList<>();
 		for(int i = 0; i < 1000000; i++){
 			TestObject test = new TestObject();
 			test.setName("test" + i);

@@ -6,10 +6,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonMap;
 import org.jedisson.map.JedissonHashMap;
 import org.junit.After;
@@ -213,12 +214,12 @@ public class JedissonHashMapTest{
 	}
 	
 	@Test
-	public void testJedissonAsyncMap() throws InterruptedException{
+	public void testJedissonAsyncMap() throws InterruptedException, ExecutionException{
 		IJedisson jedisson = Jedisson.getJedisson();
 		IJedissonMap<String,TestObject> map = jedisson.getMap("asyncMap",String.class,TestObject.class).withAsync();
 		
 		long startTime = System.currentTimeMillis();
-		List<IJedissonFuture<TestObject>> futures = new ArrayList<>();
+		List<IJedissonPromise<TestObject>> futures = new ArrayList<>();
 		for(int i = 0; i < 1000000; i++){
 			TestObject test = new TestObject();
 			test.setName("test" + i);

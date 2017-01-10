@@ -2,7 +2,7 @@ package org.jedisson.async;
 
 import java.util.Map;
 
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.core.ScanOptions;
@@ -11,21 +11,21 @@ import org.springframework.data.redis.core.script.RedisScript;
 public abstract class JedissonCommand {
 	protected byte[] key;
 		
-	protected IJedissonFuture future;
+	protected IJedissonPromise future;
 	
 	protected long threadId;
 	
-	public JedissonCommand(IJedissonFuture future, final byte[] key){
+	public JedissonCommand(IJedissonPromise future, final byte[] key){
 		this.future = future;
 		this.key = key;
 		threadId = Thread.currentThread().getId();
 	}
 
-	public IJedissonFuture getFuture() {
+	public IJedissonPromise getFuture() {
 		return future;
 	}
 
-	public void setFuture(IJedissonFuture future) {
+	public void setFuture(IJedissonPromise future) {
 		this.future = future;
 	}
 
@@ -39,7 +39,7 @@ public abstract class JedissonCommand {
 
 		private long index;
 		
-		public LINDEX(IJedissonFuture future, byte[] key, long index) {
+		public LINDEX(IJedissonPromise future, byte[] key, long index) {
 			super(future, key);
 			this.index = index;
 		}
@@ -52,7 +52,7 @@ public abstract class JedissonCommand {
 	
 	public static class LLEN extends JedissonCommand{
 
-		public LLEN(IJedissonFuture future, byte[] key) {
+		public LLEN(IJedissonPromise future, byte[] key) {
 			super(future, key);
 			// TODO Auto-generated constructor stub
 		}
@@ -67,7 +67,7 @@ public abstract class JedissonCommand {
 	public static class RPUSH extends JedissonCommand{
 		private byte[][] values;
 		
-		public RPUSH(IJedissonFuture future, byte[] key, byte[]... values) {
+		public RPUSH(IJedissonPromise future, byte[] key, byte[]... values) {
 			super(future, key);
 			this.values = values;
 		}
@@ -83,7 +83,7 @@ public abstract class JedissonCommand {
 
 		private byte[][] values;
 		
-		public LPUSH(IJedissonFuture future, byte[] key, byte[]... values) {
+		public LPUSH(IJedissonPromise future, byte[] key, byte[]... values) {
 			super(future, key);
 			this.values = values;
 		}
@@ -100,7 +100,7 @@ public abstract class JedissonCommand {
 		private long index;
 		private byte[] value;
 		
-		public LSET(IJedissonFuture future, byte[] key, long index, byte[] value) {
+		public LSET(IJedissonPromise future, byte[] key, long index, byte[] value) {
 			super(future, key);
 			this.index = index;
 			this.value = value;
@@ -115,7 +115,7 @@ public abstract class JedissonCommand {
 	
 	public static class LPOP extends JedissonCommand{
  
-		public LPOP(IJedissonFuture future, byte[] key) {
+		public LPOP(IJedissonPromise future, byte[] key) {
 			super(future, key);
 			// TODO Auto-generated constructor stub
 		}
@@ -131,7 +131,7 @@ public abstract class JedissonCommand {
 		private long count;
 		private byte[] value;
 		
-		public LREM(IJedissonFuture future, byte[] key, long count, byte[] value) {
+		public LREM(IJedissonPromise future, byte[] key, long count, byte[] value) {
 			super(future, key);
 			this.count = count;
 			this.value = value;
@@ -145,7 +145,7 @@ public abstract class JedissonCommand {
 	}
 	
 	public static class DEL extends JedissonCommand{ 
-		public DEL(IJedissonFuture future, byte[] key) {
+		public DEL(IJedissonPromise future, byte[] key) {
 			super(future, key);
 			// TODO Auto-generated constructor stub
 		}
@@ -162,7 +162,7 @@ public abstract class JedissonCommand {
 		private long begin;
 		private long end;
 		
-		public LRANGE(IJedissonFuture future, byte[] key, long begin, long end) {
+		public LRANGE(IJedissonPromise future, byte[] key, long begin, long end) {
 			super(future, key);
 			this.begin = begin;
 			this.end = end;
@@ -177,7 +177,7 @@ public abstract class JedissonCommand {
 	
 	public static class HLEN extends JedissonCommand{
 
-		public HLEN(IJedissonFuture future, byte[] key) {
+		public HLEN(IJedissonPromise future, byte[] key) {
 			super(future, key);
 			// TODO Auto-generated constructor stub
 		}
@@ -193,7 +193,7 @@ public abstract class JedissonCommand {
 
 		private byte[] field;
 		
-		public HEXISTS(IJedissonFuture future, byte[] key, byte[] field) {
+		public HEXISTS(IJedissonPromise future, byte[] key, byte[] field) {
 			super(future, key);
 			this.field = field;
 		}
@@ -209,7 +209,7 @@ public abstract class JedissonCommand {
 
 		private byte[] field;
 		
-		public HGET(IJedissonFuture future, byte[] key, byte[] field) {
+		public HGET(IJedissonPromise future, byte[] key, byte[] field) {
 			super(future, key);
 			this.field = field;
 		}
@@ -225,7 +225,7 @@ public abstract class JedissonCommand {
 		private byte[] field;
 		private byte[] value;
 		
-		public HSET(IJedissonFuture future, byte[] key, byte[] field, byte[] value) {
+		public HSET(IJedissonPromise future, byte[] key, byte[] field, byte[] value) {
 			super(future, key);
 			this.field = field;
 			this.value = value;
@@ -241,7 +241,7 @@ public abstract class JedissonCommand {
 	public static class HMSET extends JedissonCommand{
 		private Map<byte[],byte[]> hashes;
 		
-		public HMSET(IJedissonFuture future, byte[] key, Map<byte[],byte[]> hashes) {
+		public HMSET(IJedissonPromise future, byte[] key, Map<byte[],byte[]> hashes) {
 			super(future, key);
 			this.hashes = hashes;
 		}
@@ -256,7 +256,7 @@ public abstract class JedissonCommand {
 	public static class HMGET extends JedissonCommand{
 		private byte[][] fields;
 		
-		public HMGET(IJedissonFuture future, byte[] key, byte[]... fields) {
+		public HMGET(IJedissonPromise future, byte[] key, byte[]... fields) {
 			super(future, key);
 			this.fields = fields;
 		}
@@ -270,7 +270,7 @@ public abstract class JedissonCommand {
 	
 	public static class HVALS extends JedissonCommand{
 
-		public HVALS(IJedissonFuture future, byte[] key) {
+		public HVALS(IJedissonPromise future, byte[] key) {
 			super(future, key);
 			// TODO Auto-generated constructor stub
 		}
@@ -285,7 +285,7 @@ public abstract class JedissonCommand {
 	public static class HDEL extends JedissonCommand{
 		private byte[][] fields;
 		
-		public HDEL(IJedissonFuture future, byte[] key, byte[]... fields) {
+		public HDEL(IJedissonPromise future, byte[] key, byte[]... fields) {
 			super(future, key);
 			this.fields = fields;
 		}
@@ -299,7 +299,7 @@ public abstract class JedissonCommand {
 	
 	public static class HSCAN extends JedissonCommand{
 		 ScanOptions scanOption;
-		public HSCAN(IJedissonFuture future, byte[] key, ScanOptions scanOption) {
+		public HSCAN(IJedissonPromise future, byte[] key, ScanOptions scanOption) {
 			super(future, key);
 			this.scanOption = scanOption;
 		}
@@ -314,7 +314,7 @@ public abstract class JedissonCommand {
 	public static class PUBLISH extends JedissonCommand{
 		private byte[] message;
 		
-		public PUBLISH(IJedissonFuture future, byte[] key, byte[] message) {
+		public PUBLISH(IJedissonPromise future, byte[] key, byte[] message) {
 			super(future, key);
 			this.message = message;
 		}
@@ -329,7 +329,7 @@ public abstract class JedissonCommand {
 	public static class BLPOP extends JedissonCommand{
 		private int timeout;
 		
-		public BLPOP(IJedissonFuture future, byte[] key, int timeout) {
+		public BLPOP(IJedissonPromise future, byte[] key, int timeout) {
 			super(future, key);
 			this.timeout = timeout;
 		}
@@ -346,7 +346,7 @@ public abstract class JedissonCommand {
 		private byte[] field;
 		private byte[] value;
 		
-		public HSETNX(IJedissonFuture future, byte[] key, byte[] field, byte[] value) {
+		public HSETNX(IJedissonPromise future, byte[] key, byte[] field, byte[] value) {
 			super(future, key);
 			this.field = field;
 			this.value = value;
@@ -364,7 +364,7 @@ public abstract class JedissonCommand {
 		private int keyNum;
 		private byte[][] keysAndArgs;
 		
-		public EVAL(IJedissonFuture future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
+		public EVAL(IJedissonPromise future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
 			super(future, null);
 			this.script = script;
 			this.keyNum = keyNum;
@@ -382,7 +382,7 @@ public abstract class JedissonCommand {
 		RedisScript script;
 		private int keyNum;
 		private byte[][] keysAndArgs;
-		public EVALSHA(IJedissonFuture future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
+		public EVALSHA(IJedissonPromise future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
 			super(future, null);
 			this.script = script;
 			this.keyNum = keyNum;

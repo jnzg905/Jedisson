@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.async.JedissonCommand.DEL;
@@ -17,7 +17,7 @@ import org.jedisson.async.JedissonCommand.LPUSH;
 import org.jedisson.async.JedissonCommand.LRANGE;
 import org.jedisson.async.JedissonCommand.LREM;
 import org.jedisson.async.JedissonCommand.RPUSH;
-import org.jedisson.async.JedissonFuture;
+import org.jedisson.async.JedissonPromise;
 import org.jedisson.async.JedissonCommand.LINDEX;
 import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -26,7 +26,7 @@ import org.springframework.util.Assert;
 
 public class JedissonAsyncList<E> extends JedissonList<E>{
 
-	private static final ThreadLocal<IJedissonFuture> currFuture = new ThreadLocal<>();
+	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
 	
 	public JedissonAsyncList(String name, Class<E> clss,IJedissonSerializer serializer, Jedisson jedisson) {
 		super(name, clss, serializer, jedisson);
@@ -35,12 +35,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean add(E v) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		RPUSH command = new RPUSH(future,getName().getBytes(),getSerializer().serialize(v));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -48,12 +48,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean remove(Object o) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		LREM command = new LREM(future,getName().getBytes(),1, getSerializer().serialize(o));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -61,9 +61,9 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean containsAll(Collection<?> c) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		if(c.isEmpty()){
-			future.done(null);
+			future.setSuccess(null);
 			currFuture.set(future);
 			return true;
 		}
@@ -93,7 +93,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -101,9 +101,9 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean addAll(Collection<? extends E> c) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		if(c.isEmpty()){
-			future.done(null);
+			future.setSuccess(null);
 			currFuture.set(future);
 			return true;
 		}
@@ -117,7 +117,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -134,7 +134,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 			final List<E> elements = new ArrayList<>();
 			elements.addAll(c);
 			Collections.reverse(elements);
-			IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+			IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 			byte[][] values = new byte[c.size()][];
 			int i = 0;
 			for(E v : elements){
@@ -144,7 +144,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 			try {
 				getJedisson().getAsyncService().sendCommand(command);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				future.setFailure(e);
 			}
 			currFuture.set(future);
 			return true;
@@ -178,12 +178,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 		for(Object v : c){
 			keysAndArgs[j++] = getSerializer().serialize(v);
 		}
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		EVALSHA command = new EVALSHA(future,script, 1,keysAndArgs);
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -191,9 +191,9 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean removeAll(Collection<?> c) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		if(c.isEmpty()){
-			future.done(null);
+			future.setSuccess(null);
 			currFuture.set(future);
 			return true;
 		}
@@ -221,7 +221,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -229,7 +229,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public boolean retainAll(Collection<?> c) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		if(c.isEmpty()){
 			clear();
 			return true;
@@ -271,7 +271,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -279,24 +279,24 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public void clear() {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		DEL command = new DEL(future,getName().getBytes());
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 	}
 
 	@Override
 	public E get(int index) {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		LINDEX command = new LINDEX(future,getName().getBytes(),index);
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -309,13 +309,13 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
                 "redis.call('lset', KEYS[1], ARGV[1], ARGV[2]); " +
                 "return v",byte[].class);
 	
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		EVALSHA command = new EVALSHA(future,script, 1,getName().getBytes(),getSerializer().serialize(index),
 				getSerializer().serialize(element));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -329,12 +329,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 	@Override
 	public E remove(int index) {
 		if(index == 0){
-			IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+			IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 			LPOP command = new LPOP(future,getName().getBytes());
 			try {
 				getJedisson().getAsyncService().sendCommand(command);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				future.setFailure(e);
 			}
 			currFuture.set(future);
 		}
@@ -343,12 +343,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
                 "redis.call('lset', KEYS[1], ARGV[1], 'DELETED_BY_JEDISSON');" +
                 "redis.call('lrem', KEYS[1], 1, 'DELETED_BY_JEDISSON');" +
                 "return v",byte[].class);
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		EVALSHA command = new EVALSHA(future,script,1,getName().getBytes(),getSerializer().serialize(index));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -356,12 +356,12 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 
 	@Override
 	public Object[] toArray() {
-		IJedissonFuture<E> future = new JedissonFuture<>(getSerializer());
+		IJedissonPromise<E> future = new JedissonPromise<>(getSerializer());
 		LRANGE command = new LRANGE(future,getName().getBytes(),0,-1);
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -385,7 +385,7 @@ public class JedissonAsyncList<E> extends JedissonList<E>{
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		return currFuture.get();
 	}
 

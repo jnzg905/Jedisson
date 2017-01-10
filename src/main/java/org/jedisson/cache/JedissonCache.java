@@ -17,7 +17,7 @@ import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonAsyncSupport;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.common.JedissonObject;
 import org.jedisson.util.JedissonUtil;
@@ -434,7 +434,7 @@ public class JedissonCache<K,V> extends JedissonObject implements IJedissonCache
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		// TODO Auto-generated method stub
 		return null;
 	}

@@ -17,10 +17,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.alibaba.fastjson.JSON;
 
+@PropertySource("file:config/jedisson.properties")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonBlockingQueueTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")

@@ -14,7 +14,7 @@ import java.util.HashMap;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonAsyncSupport;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonMap;
 import org.jedisson.api.IJedissonSerializer;
 import org.springframework.dao.DataAccessException;
@@ -390,7 +390,7 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJ
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		// TODO Auto-generated method stub
 		return null;
 	}

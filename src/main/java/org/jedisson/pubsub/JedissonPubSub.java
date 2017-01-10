@@ -8,7 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonMessageListener;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
@@ -246,7 +246,7 @@ public class JedissonPubSub extends JedissonObject implements IJedissonPubSub{
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		return null;
 	}
 }

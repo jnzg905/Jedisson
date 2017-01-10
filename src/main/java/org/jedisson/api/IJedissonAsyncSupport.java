@@ -6,5 +6,5 @@ public interface IJedissonAsyncSupport {
 	
 	public boolean isAsync();
 	
-	public <R> IJedissonFuture<R> future();
+	public <R> IJedissonPromise<R> future();
 }

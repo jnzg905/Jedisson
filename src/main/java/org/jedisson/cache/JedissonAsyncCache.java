@@ -9,15 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.cache.Cache;
-import javax.cache.Cache.Entry;
-
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonAsyncSupport;
 import org.jedisson.api.IJedissonCache;
 import org.jedisson.api.IJedissonCacheConfiguration;
-import org.jedisson.api.IJedissonClosure;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
+import org.jedisson.api.IJedissonPromise.IPromiseListener;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.async.JedissonCommand.DEL;
 import org.jedisson.async.JedissonCommand.EVALSHA;
@@ -28,17 +24,13 @@ import org.jedisson.async.JedissonCommand.HMGET;
 import org.jedisson.async.JedissonCommand.HMSET;
 import org.jedisson.async.JedissonCommand.HSET;
 import org.jedisson.async.JedissonCommand.HSETNX;
-import org.jedisson.async.JedissonFuture;
-import org.jedisson.cache.JedissonCache.JedissonCacheEntry;
-import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.core.RedisCallback;
+import org.jedisson.async.JedissonPromise;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.util.Assert;
 
 public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 
-	private static final ThreadLocal<IJedissonFuture> currFuture = new ThreadLocal<>();
+	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
 	
 	public JedissonAsyncCache(String name,
 			IJedissonCacheConfiguration<K, V> configuration, Jedisson jedisson) {
@@ -57,41 +49,41 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		Assert.notNull(keySerializer);
 		Assert.notNull(valueSerializer);
 		
-		IJedissonFuture<V> future = new JedissonFuture(valueSerializer);
+		IJedissonPromise<V> promise = new JedissonPromise<>(valueSerializer);
 		try{
-			IJedissonFuture<V> internalFuture = new JedissonFuture(valueSerializer);
-			HGET command = new HGET(internalFuture,getName().getBytes(),keySerializer.serialize(key));
+			IJedissonPromise<V> internalPromise = new JedissonPromise<>(valueSerializer);
+			HGET command = new HGET(internalPromise,getName().getBytes(),keySerializer.serialize(key));
 			getJedisson().getAsyncService().sendCommand(command);
-			internalFuture.listen(new IJedissonClosure<IJedissonFuture<V>>(){
+			internalPromise.onSuccess(new IPromiseListener<IJedissonPromise>(){
 				
 				@Override
-				public void apply(IJedissonFuture<V> f) {
+				public IJedissonPromise apply(IJedissonPromise p) {
 					try{
-						V value = f.get();	
+						V value = (V) p.get();	
 						if(value == null && cacheLoader != null){
 							value = cacheLoader.load(key);
 							if(value != null){
 								byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
 								byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
-								HSET command = new HSET(future,getName().getBytes(),rawKey,rawValue);
+								HSET command = new HSET(promise,getName().getBytes(),rawKey,rawValue);
 								getJedisson().getAsyncService().sendCommand(command);
 							}else{
-								future.done(value);
+								promise.setSuccess(value);
 							}
 						}else{
-							future.done(value);
+							promise.setSuccess(value);
 						}
 					}catch(Exception e){
-						future.done(null);
+						promise.setFailure(e);
 					}
-					
+					return p;
 				}
 				
 			});
 		}catch(InterruptedException e){
-			future.done(null);
+			promise.setFailure(e);
 		}
-		currFuture.set(future);
+		currFuture.set(promise);
 		return null;
 	}
 
@@ -101,19 +93,19 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 			throw new NullPointerException();
 		}
 		
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise<V> promise = new JedissonPromise<>(getConfiguration().getValueSerializer());
 		try{
 			byte[][] fields = new byte[keys.size()][];
 			int i = 0;
 			for(K key : keys){
 				fields[i++] = getConfiguration().getKeySerializer().serialize(key);
 			}
-			HMGET command = new HMGET(future,getName().getBytes(),fields);
+			HMGET command = new HMGET(promise,getName().getBytes(),fields);
 			getJedisson().getAsyncService().sendCommand(command);
 		}catch(InterruptedException e){
-			future.done(null);
+			promise.setFailure(e);
 		}
-		currFuture.set(future);
+		currFuture.set(promise);
 		return null;
 	}
 
@@ -125,33 +117,34 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if (value == null) {
 			throw new NullPointerException("map value can't be null");
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise<V> promise = new JedissonPromise<>(getConfiguration().getValueSerializer());
 		try{
-			IJedissonFuture internalFuture = new JedissonFuture(getConfiguration().getValueSerializer());
+			IJedissonPromise<V> internalPromise = new JedissonPromise<>(getConfiguration().getValueSerializer());
 			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
 			byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
-			HSET command = new HSET(internalFuture,getName().getBytes(),rawKey,rawValue);
+			HSET command = new HSET(internalPromise,getName().getBytes(),rawKey,rawValue);
 			getJedisson().getAsyncService().sendCommand(command);
-			internalFuture.listen(new IJedissonClosure<IJedissonFuture<V>>(){
+			internalPromise.onSuccess(new IPromiseListener<IJedissonPromise>(){
 
 				@Override
-				public void apply(IJedissonFuture<V> f) {
+				public IJedissonPromise apply(IJedissonPromise p) {
 					try{
-						Boolean result = (Boolean) f.get();	
+						Boolean result = (Boolean) p.get();	
 						if(result && cacheWriter != null){
 							cacheWriter.write(new JedissonCacheEntry(key,value));
 						}	
-						future.done(result);
+						promise.setSuccess(result);
 					}catch(Exception e){
-						future.done(null);
+						promise.setFailure(e);
 					}
+					return p;
 				}
 				
 			});
 		}catch(InterruptedException e){
-			future.done(null);
+			promise.setFailure(e);
 		}
-		currFuture.set(future);
+		currFuture.set(promise);
 	}
 
 	@Override
@@ -169,7 +162,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 				"return v;", 
 				byte[].class);
 		
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[][] fields = new byte[3][];
 			int i = 0;
@@ -190,7 +183,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if(key == null){
 			throw new NullPointerException();
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
 			HEXISTS command = new HEXISTS(future,getName().getBytes(),rawKey);
@@ -207,7 +200,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if(key == null || value == null){
 			throw new NullPointerException();
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
 			byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
@@ -225,7 +218,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if(map == null || map.containsKey(null)){
 			throw new NullPointerException();
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(map.size());
 
@@ -246,7 +239,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if(key == null){
 			throw new NullPointerException();
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
 			HDEL command = new HDEL(future,getName().getBytes(),rawKey);
@@ -263,7 +256,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 		if(keys == null || keys.contains(null)){
 			throw new NullPointerException();
 		}
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[][] fields = new byte[keys.size()][];
 			int i = 0;
@@ -290,7 +283,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 				"return v;", 
 				byte[].class);
 		
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			byte[][] fields = new byte[2][];
 			int i = 0;
@@ -307,7 +300,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 
 	@Override
 	public void clear() {
-		IJedissonFuture future = new JedissonFuture(getConfiguration().getValueSerializer());
+		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
 		try{
 			DEL command = new DEL(future,getName().getBytes());
 			getJedisson().getAsyncService().sendCommand(command);
@@ -328,7 +321,7 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		return currFuture.get();
 	}
 

@@ -8,7 +8,7 @@ import java.util.Set;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonAsyncSupport;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonMap;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.async.JedissonCommand.DEL;
@@ -18,14 +18,14 @@ import org.jedisson.async.JedissonCommand.HGET;
 import org.jedisson.async.JedissonCommand.HMSET;
 import org.jedisson.async.JedissonCommand.HSET;
 import org.jedisson.async.JedissonCommand.HVALS;
-import org.jedisson.async.JedissonFuture;
+import org.jedisson.async.JedissonPromise;
 import org.jedisson.async.JedissonCommand.LREM;
 import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 
-	private static final ThreadLocal<IJedissonFuture> currFuture = new ThreadLocal<>();
+	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
 	
 	public JedissonAsyncHashMap(String name,
 			IJedissonSerializer<K> keySerializer,
@@ -36,12 +36,12 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 
 	@Override
 	public boolean containsKey(Object key) {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		HEXISTS command = new HEXISTS(future,getName().getBytes(),getKeySerializer().serialize((K) key));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -53,7 +53,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 			throw new NullPointerException("map value can't be null");
 		}
 		
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		DefaultRedisScript<Boolean> script = new DefaultRedisScript<>(
 				"local s = redis.call('hvals', KEYS[1]);" + 
 				"for i = 1, #s, 1 do " + 
@@ -66,7 +66,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return true;
@@ -74,12 +74,12 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 
 	@Override
 	public V get(Object key) {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		HGET command = new HGET(future,getName().getBytes(),getKeySerializer().serialize((K) key));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -93,7 +93,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		if (value == null) {
 			throw new NullPointerException("map value can't be null");
 		}
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
 				"local v = redis.call('hget', KEYS[1], ARGV[1]); " + 
 				"redis.call('hset', KEYS[1], ARGV[1], ARGV[2]); " + 
@@ -106,7 +106,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -114,13 +114,13 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 
 	@Override
 	public void fastPut(K key, V value) {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		HSET command = new HSET(future,getName().getBytes(),getKeySerializer().serialize(key),
 				getValueSerializer().serialize(value));
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 	}
@@ -130,7 +130,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		if (key == null) {
             throw new NullPointerException("map key can't be null");
         }
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
 				"local v = redis.call('hget', KEYS[1], ARGV[1]); " + 
 				"redis.call('hdel', KEYS[1], ARGV[1]); " + 
@@ -142,7 +142,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -150,7 +150,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 
 	@Override
 	public void putAll(Map<? extends K, ? extends V> m) {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(m.size());
 		for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
 			hashes.put(getKeySerializer().serialize(entry.getKey()), getValueSerializer().serialize(entry.getValue()));
@@ -159,31 +159,31 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 	}
 
 	@Override
 	public void clear() {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		DEL command = new DEL(future,getName().getBytes());
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 	}
 
 	@Override
 	public Collection<V> values() {
-		IJedissonFuture<V> future = new JedissonFuture<>(getValueSerializer());
+		IJedissonPromise<V> future = new JedissonPromise<>(getValueSerializer());
 		HVALS command = new HVALS(future,getName().getBytes());
 		try {
 			getJedisson().getAsyncService().sendCommand(command);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 		return null;
@@ -200,7 +200,7 @@ public class JedissonAsyncHashMap<K,V> extends JedissonHashMap<K,V>{
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		return currFuture.get();
 	}
 

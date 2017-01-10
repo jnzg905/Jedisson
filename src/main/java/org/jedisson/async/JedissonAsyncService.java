@@ -11,7 +11,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.jedisson.api.IJedisson;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.autoconfiguration.JedissonConfiguration;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -112,11 +112,11 @@ public class JedissonAsyncService {
 		public void run() {
 			while(!Thread.currentThread().isInterrupted()){
 				flushLock.lock();
+				final List<JedissonCommand> commands = new LinkedList<>();
 				try{
 					while(!isFlush){
 						notFlush.await();
 					}
-					final List<JedissonCommand> commands = new ArrayList<>();
 					taskQueue.drainTo(commands,jedisson.getConfiguration().getAsync().getFlushSize());
 					
 					if(!commands.isEmpty()){
@@ -135,15 +135,17 @@ public class JedissonAsyncService {
 							
 						}, null);	
 						System.out.println("flush:" + (System.currentTimeMillis() - startTime) + ",size=" + results.size());
-						for(int i = 0; i < commands.size(); i++){
-							JedissonCommand command = commands.get(i);
-							command.getFuture().done(results.get(i));
+						int i = 0;
+						for(JedissonCommand command : commands){
+							command.getFuture().setSuccess(results.get(i));
 						}
 						System.out.println("done:" + (System.currentTimeMillis() - startTime));
 					}
 					
 				}catch(Exception e){
-					
+					for(JedissonCommand command : commands){
+						command.getFuture().setFailure(e);
+					}
 				}
 				finally{
 					isFlush = false;

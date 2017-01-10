@@ -1,15 +1,15 @@
 package org.jedisson.pubsub;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonFuture;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonPubSub;
 import org.jedisson.api.IJedissonSerializer;
-import org.jedisson.async.JedissonFuture;
+import org.jedisson.async.JedissonPromise;
 import org.jedisson.async.JedissonCommand.PUBLISH;
 
 public class JedissonAsyncPubSub extends JedissonPubSub{
 
-	private static final ThreadLocal<IJedissonFuture> currFuture = new ThreadLocal<>();
+	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
 	
 	public JedissonAsyncPubSub(String name, IJedissonSerializer serializer,
 			Jedisson jedisson) {
@@ -19,12 +19,12 @@ public class JedissonAsyncPubSub extends JedissonPubSub{
 
 	@Override
 	public <T> void publish(String channelName, T message) {
-		IJedissonFuture<T> future = new JedissonFuture(getSerializer());
+		IJedissonPromise<T> future = new JedissonPromise(getSerializer());
 		try{
 			PUBLISH command = new PUBLISH(future,channelName.getBytes(),getSerializer().serialize(message));
 			getJedisson().getAsyncService().sendCommand(command);	
 		}catch(InterruptedException e){
-			e.printStackTrace();
+			future.setFailure(e);
 		}
 		currFuture.set(future);
 	}
@@ -40,7 +40,7 @@ public class JedissonAsyncPubSub extends JedissonPubSub{
 	}
 
 	@Override
-	public <R> IJedissonFuture<R> future() {
+	public <R> IJedissonPromise<R> future() {
 		return currFuture.get();
 	}
 

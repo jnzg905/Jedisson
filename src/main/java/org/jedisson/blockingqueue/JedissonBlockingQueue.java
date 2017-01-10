@@ -10,6 +10,8 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 import org.jedisson.Jedisson;
+import org.jedisson.api.IJedissonAsyncSupport;
+import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonSerializer;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
