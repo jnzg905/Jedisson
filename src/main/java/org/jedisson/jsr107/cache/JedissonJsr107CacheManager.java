@@ -42,7 +42,7 @@ public class JedissonJsr107CacheManager extends JedissonObject implements javax.
 	
 	public JedissonJsr107CacheManager(final URI uri, final JedissonCachingProvider cachingProvider, final ClassLoader classLoader, Properties props){
 		super("JedissonJsr107CacheManager:" + classLoader.getClass().getSimpleName() + ":" + 
-				uri.toString(),Jedisson.getJedisson());
+				uri.toString(),(Jedisson) Jedisson.builder().builder());
 		this.uri = uri;
 		this.cachingProvider = cachingProvider;
 		this.classLoader = classLoader;
@@ -51,8 +51,6 @@ public class JedissonJsr107CacheManager extends JedissonObject implements javax.
 		lock = getJedisson().getReentrantLock(getName());
 		
 		cacheConfigurations = getJedisson().getMap(getName(), 
-				String.class,
-				JedissonJsr107CacheConfiguration.class,
 				new JedissonStringSerializer(),
 				new JedissonJdkSerializer<JedissonJsr107CacheConfiguration>());
 	}

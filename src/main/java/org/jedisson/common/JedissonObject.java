@@ -1,5 +1,9 @@
 package org.jedisson.common;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonObject;
 import org.jedisson.api.IJedissonSerializer;

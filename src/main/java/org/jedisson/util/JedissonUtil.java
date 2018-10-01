@@ -6,14 +6,14 @@ import org.jedisson.api.IJedissonSerializer;
 
 public final class JedissonUtil {
 
-	public static IJedissonSerializer newSerializer(String serializerClss, Class valueClss){
+	public static <T> IJedissonSerializer<T> newSerializer(String serializerClss, Class<T> valueClss){
 		try{
 			if(valueClss == null){
-				return (IJedissonSerializer) Class.forName(serializerClss).newInstance();
+				return (IJedissonSerializer<T>) Class.forName(serializerClss).newInstance();
 			}
 			
 			Constructor constructor = Class.forName(serializerClss).getConstructor(Class.class);
-			return (IJedissonSerializer) constructor.newInstance(valueClss);	
+			return (IJedissonSerializer<T>) constructor.newInstance(valueClss);	
 		}catch(Exception e){
 			throw new IllegalStateException(e);
 		}

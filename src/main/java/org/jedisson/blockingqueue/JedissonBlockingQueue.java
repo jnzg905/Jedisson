@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedissonAsyncSupport;
-import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonSerializer;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -24,12 +23,11 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	public JedissonBlockingQueue(String name, IJedissonSerializer<T> serializer, Jedisson jedisson) {
 		super(name, serializer,jedisson);
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
 	public boolean add(final T e) {
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -65,7 +63,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public T poll(final long timeout, final TimeUnit unit) throws InterruptedException {
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 			@Override
 			public T doInRedis(RedisConnection connection)
@@ -87,7 +85,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public boolean remove(final Object o) {
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -111,7 +109,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
                     "end " +
                 "end " +
                 "return -1",Long.class);		
-		return getJedisson().getConfiguration().getExecutor().execute(
+		return getJedisson().getExecutor().<Long>execute(
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
@@ -129,7 +127,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 				"redis.call('ltrim', KEYS[1], -1, 0); " +
 				"return vals",List.class);
 		
-		List<T> results = getJedisson().getConfiguration().getExecutor().execute(
+		List<T> results = getJedisson().getExecutor().execute(
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()));
@@ -153,7 +151,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 				"redis.call('ltrim', KEYS[1], elemNum + 1, -1); " +
 				"return vals",List.class);
 		
-		List<T> results = getJedisson().getConfiguration().getExecutor().execute(
+		List<T> results = getJedisson().getExecutor().execute(
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -174,7 +172,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public T poll() {
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 			@Override
 			public T doInRedis(RedisConnection connection)
@@ -188,7 +186,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public T element() {
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 			@Override
 			public T doInRedis(RedisConnection connection)
@@ -205,7 +203,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public T peek() {
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 			@Override
 			public T doInRedis(RedisConnection connection)
@@ -219,7 +217,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public int size() {
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Integer>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<Integer>(){
 
 			@Override
 			public Integer doInRedis(RedisConnection connection)
@@ -236,7 +234,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 	}
 
 	private T get(final int index){
-		return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+		return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 			@Override
 			public T doInRedis(RedisConnection connection)
@@ -249,7 +247,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 	
 	private T remove(final int index) {
 		if(index == 0){
-			return getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T>(){
+			return getJedisson().getExecutor().execute(new RedisCallback<T>(){
 
 				@Override
 				public T doInRedis(RedisConnection connection)
@@ -264,7 +262,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
                 "redis.call('lset', KEYS[1], ARGV[1], 'DELETED_BY_JEDISSON');" +
                 "redis.call('lrem', KEYS[1], 1, 'DELETED_BY_JEDISSON');" +
                 "return v",byte[].class);
-		return (T) getJedisson().getConfiguration().getExecutor().execute(
+		return (T) getJedisson().getExecutor().execute(
 				script, 
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
@@ -318,7 +316,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public Object[] toArray() {
-		return (Object[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object[]>(){
+		return (Object[]) getJedisson().getExecutor().execute(new RedisCallback<Object[]>(){
 
 			@Override
 			public Object[] doInRedis(RedisConnection connection)
@@ -336,7 +334,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public <T> T[] toArray(final T[] a) {
-		return (T[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T[]>(){
+		return (T[]) getJedisson().getExecutor().execute(new RedisCallback<T[]>(){
 
 			@Override
 			public T[] doInRedis(RedisConnection connection)
@@ -383,7 +381,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
                 "end " +
             "end " +
             "return #ARGV == 0 and 1 or 0",Boolean.class);
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		return (boolean) getJedisson().getExecutor().execute(
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
@@ -394,7 +392,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 	public boolean addAll(final Collection<? extends T> c) {
 		Assert.notEmpty(c, "Values must not be 'null' or empty.");
 		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -430,7 +428,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
                 "end " + 
 				"return v ",Boolean.class);
 		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(script,
+		return (boolean) getJedisson().getExecutor().execute(script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
 				params.toArray());
@@ -466,7 +464,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
                      + "i = i + 1 "
                 + "end "
                 + "return changed ",Boolean.class);
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		return (boolean) getJedisson().getExecutor().execute(
 				script,
 				getSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()), 
@@ -475,7 +473,7 @@ public class JedissonBlockingQueue<T> extends AbstractJedissonBlockingQueue<T>{
 
 	@Override
 	public void clear() {
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)

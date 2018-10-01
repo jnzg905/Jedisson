@@ -3,6 +3,7 @@ package org.jedisson.async;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -10,9 +11,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.jedisson.JedissonConfiguration;
 import org.jedisson.api.IJedisson;
-import org.jedisson.api.IJedissonPromise;
-import org.jedisson.autoconfiguration.JedissonConfiguration;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
@@ -27,7 +27,7 @@ public class JedissonAsyncService {
 	
 	public JedissonAsyncService(final IJedisson jedisson){
 		this.jedisson = jedisson;
-		flushPool = new FlushPool(jedisson.getConfiguration().getAsync().getThreadNum());
+		flushPool = new FlushPool(jedisson.getConfiguration().getFlushThreadNum());
 		
 		flushTimer = Executors.newSingleThreadScheduledExecutor();
 		flushTimer.scheduleAtFixedRate(new Runnable(){
@@ -37,10 +37,17 @@ public class JedissonAsyncService {
 				flushPool.flush();
 			}
 			
-		}, 0, jedisson.getConfiguration().getAsync().getFlushFreq(), TimeUnit.MILLISECONDS);
+		}, 0, jedisson.getConfiguration().getFlushFreq(), TimeUnit.MILLISECONDS);
 	}
-	public void sendCommand(JedissonCommand command) throws InterruptedException{
-		flushPool.put(command);
+	public <V> CompletableFuture<V> execCommand(JedissonCommand<V> command){
+		CompletableFuture<V> f = new CompletableFuture<V>();
+		command.setFuture(f);
+		try{
+			flushPool.put(command);	
+		}catch(Exception e){
+			f.completeExceptionally(e);
+		}
+		return f;
 	}
 	
 	class FlushPool{
@@ -97,7 +104,7 @@ public class JedissonAsyncService {
 		
 		public void put(JedissonCommand command) throws InterruptedException{
 			taskQueue.put(command);
-			if(!isFlush && taskQueue.size() >= jedisson.getConfiguration().getAsync().getFlushSize()){
+			if(!isFlush && taskQueue.size() >= jedisson.getConfiguration().getFlushSize()){
 				flushLock.lock();
 				try{
 					isFlush = true;
@@ -117,16 +124,15 @@ public class JedissonAsyncService {
 					while(!isFlush){
 						notFlush.await();
 					}
-					taskQueue.drainTo(commands,jedisson.getConfiguration().getAsync().getFlushSize());
+					taskQueue.drainTo(commands,jedisson.getConfiguration().getFlushSize());
 					
 					if(!commands.isEmpty()){
 						long startTime = System.currentTimeMillis();
 						
-						List results = jedisson.getConfiguration().getExecutor().executePipeline(new RedisCallback<Object>(){
+						List results = jedisson.getExecutor().executePipeline(new RedisCallback<Object>(){
 
 							@Override
-							public Object doInRedis(RedisConnection connection)
-									throws DataAccessException {
+							public Object doInRedis(RedisConnection connection) throws DataAccessException {
 								for(JedissonCommand command : commands){
 									command.execute(connection);
 								}
@@ -134,17 +140,18 @@ public class JedissonAsyncService {
 							}
 							
 						}, null);	
-						System.out.println("flush:" + (System.currentTimeMillis() - startTime) + ",size=" + results.size());
+						assert(results.size() == commands.size());
 						int i = 0;
 						for(JedissonCommand command : commands){
-							command.getFuture().setSuccess(results.get(i));
+							Object result = results.get(i++);
+							Object v = jedisson.getExecutor().deserializeMixedResults(result, command.getValueSerializer());
+							command.getFuture().complete(v);
 						}
-						System.out.println("done:" + (System.currentTimeMillis() - startTime));
 					}
 					
 				}catch(Exception e){
 					for(JedissonCommand command : commands){
-						command.getFuture().setFailure(e);
+						command.getFuture().completeExceptionally(e);
 					}
 				}
 				finally{

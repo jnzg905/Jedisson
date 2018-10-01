@@ -6,17 +6,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashMap;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonAsyncSupport;
-import org.jedisson.api.IJedissonPromise;
-import org.jedisson.api.IJedissonMap;
 import org.jedisson.api.IJedissonSerializer;
+import org.jedisson.api.map.IJedissonAsyncMap;
+import org.jedisson.api.map.IJedissonMap;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.Cursor;
@@ -26,22 +23,17 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJedissonMap<K,V>{
 	
+	private IJedissonAsyncMap<K,V> asyncMap;
+	
 	public JedissonHashMap(String name, IJedissonSerializer<K> keySerializer, IJedissonSerializer valueSerializer,
 			Jedisson jedisson) {
 		super(name, keySerializer, valueSerializer, jedisson);
+		asyncMap = jedisson.getAsyncMap(name, keySerializer,valueSerializer);
 	}
 
 	@Override
 	public int size() {
-		return (int) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Integer>(){
-
-			@Override
-			public Integer doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				return connection.hLen(getName().getBytes()).intValue();
-			}
-			
-		});
+		return asyncMap.size().join().intValue();
 	}
 
 	@Override
@@ -51,126 +43,37 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJ
 
 	@Override
 	public boolean containsKey(final Object key) {
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
-
-			@Override
-			public Boolean doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				return connection.hExists(getName().getBytes(),getKeySerializer().serialize((K) key));
-			}
-			
-		});
+		return asyncMap.containsKey((K) key).join();
 	}
 
 	@Override
 	public boolean containsValue(Object value) {
-		if (value == null) {
-			throw new NullPointerException("map value can't be null");
-		}
-		
-		DefaultRedisScript<Boolean> script = new DefaultRedisScript<>(
-				"local s = redis.call('hvals', KEYS[1]);" + 
-				"for i = 1, #s, 1 do " + 
-					"if ARGV[1] == s[i] then " + 
-						"return 1 " + 
-					"end " + 
-				"end;" + 
-				"return 0",Boolean.class);
-
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getValueSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()),
-				getValueSerializer().serialize((V) value));
+		return asyncMap.containsValue((V) value).join();
 	}
 
 	@Override
 	public V get(final Object key) {
-		if (key == null) {
-			throw new NullPointerException("map key can't be null");
-		}
-
-		return (V) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<V>(){
-
-			@Override
-			public V doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				return (V) getValueSerializer().deserialize(connection.hGet(getName().getBytes(), getKeySerializer().serialize((K) key)));
-			}
-			
-		});
+		return asyncMap.get((K) key).join();
 	}
 
 	@Override
 	public V put(K key, V value) {
-		if (key == null) {
-			throw new NullPointerException("map key can't be null");
-		}
-		if (value == null) {
-			throw new NullPointerException("map value can't be null");
-		}
-
-		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
-				"local v = redis.call('hget', KEYS[1], ARGV[1]); " + 
-				"redis.call('hset', KEYS[1], ARGV[1], ARGV[2]); " + 
-				"return v", 
-				byte[].class);
-		
-		return (V) getJedisson().getConfiguration().getExecutor().execute(
-				script, 
-				getValueSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				getKeySerializer().serialize(key),
-				getValueSerializer().serialize(value));
+		return asyncMap.put(key, value).join();
 	}
 
 	@Override
 	public V remove(Object key) {
-		if (key == null) {
-            throw new NullPointerException("map key can't be null");
-        }
-		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
-				"local v = redis.call('hget', KEYS[1], ARGV[1]); " + 
-				"redis.call('hdel', KEYS[1], ARGV[1]); " + 
-				"return v", 
-				byte[].class);
-		return (V) getJedisson().getConfiguration().getExecutor().execute(
-				script, 
-				getValueSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				getKeySerializer().serialize((K) key));
+		return asyncMap.remove((K) key).join();
 	}
 
 	@Override
 	public void putAll(final Map<? extends K, ? extends V> m) {
-        getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
-
-			@Override
-			public Object doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(m.size());
-				for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
-					hashes.put(getKeySerializer().serialize(entry.getKey()), getValueSerializer().serialize(entry.getValue()));
-				}
-				connection.hMSet(getName().getBytes(), hashes);
-				return null;
-			}
-        	
-        });
+		asyncMap.putAll(m).join();
 	}
 
 	@Override
 	public void clear() {
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
-
-			@Override
-			public Object doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				connection.del(getName().getBytes());
-				return null;
-			}
-			
-		});
+		asyncMap.clear().join();
 	}
 
 	@Override
@@ -180,20 +83,7 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJ
 
 	@Override
 	public Collection<V> values() {
-		return (Collection<V>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Collection<V>>(){
-
-			@Override
-			public Collection<V> doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				List<V> results = new ArrayList<>();
-				List<byte[]> values = connection.hVals(getName().getBytes());
-				for(int i = 0; i < values.size(); i++){
-					results.add((V) getValueSerializer().deserialize(values.get(i)));
-				}
-				return results;
-			}
-			
-		});
+		return asyncMap.values().join();
 	}
 
 	@Override
@@ -201,31 +91,25 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJ
 		return new EntrySet();
 	}
 
+	@Override
+	public void fastPut(final K key, final V value) {
+		if (key == null || value == null) {
+			throw new NullPointerException();
+		}
+		asyncMap.fastPut(key, value).join();
+	}
+	
 	public void fastRemove(final K... keys){
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
-
-			@Override
-			public Object doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				byte[][] hKeys = new byte[keys.length][];
-				int i = 0;
-				for(K key : keys){
-					hKeys[i++] = getKeySerializer().serialize(key);
-				}
-				connection.hDel(getName().getBytes(), hKeys);
-				return null;
-			}
-			
-		});
+		asyncMap.fastRemove(keys).join();
 	}
 	
 	protected Iterator<Entry<K,V>> newEntryIterator(){
-		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		RedisConnection connection = getJedisson().getExecutor().getConnectionFactory().getConnection();
 		return new EntryIterator(connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build()),connection);
 	}
 	
 	protected Iterator<K> newKeyIterator() {
-		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		RedisConnection connection = getJedisson().getExecutor().getConnectionFactory().getConnection();
 		return new KeyIterator(connection.hScan(getName().getBytes(), ScanOptions.scanOptions().build()),connection);
     }
 
@@ -377,39 +261,4 @@ public class JedissonHashMap<K,V> extends AbstractJedissonMap<K,V> implements IJ
 			throw new UnsupportedOperationException();
 		}
     }
-
-	@Override
-	public IJedissonMap<K,V> withAsync() {
-		return new JedissonAsyncHashMap(getName(),getKeySerializer(),getValueSerializer(),getJedisson());
-	}
-
-	@Override
-	public boolean isAsync() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public <R> IJedissonPromise<R> future() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void fastPut(final K key, final V value) {
-		if (key == null || value == null) {
-			throw new NullPointerException();
-		}
-
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<V>(){
-
-			@Override
-			public V doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				connection.hSet(getName().getBytes(), getKeySerializer().serialize(key), getValueSerializer().serialize(value));
-				return null;
-			}
-			
-		});
-	}
 }

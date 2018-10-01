@@ -6,7 +6,9 @@ import java.util.Set;
 
 import javax.cache.Cache;
 
-public interface IJedissonCache<K,V> extends IJedissonAsyncSupport{
+import org.jedisson.cache.JedissonCacheConfiguration;
+
+public interface IJedissonCache<K,V>{
 	
 	public V get(K key);
 	
@@ -36,6 +38,6 @@ public interface IJedissonCache<K,V> extends IJedissonAsyncSupport{
 	
 	public long size();
 	
-	public IJedissonCacheConfiguration<K,V> getConfiguration();
+	public JedissonCacheConfiguration<K,V> getConfiguration();
 }
 

@@ -6,16 +6,19 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
-import org.jedisson.api.IJedissonPromise;
-import org.jedisson.api.IJedissonMap;
+import org.jedisson.api.map.IJedissonAsyncMap;
+import org.jedisson.api.map.IJedissonMap;
 import org.jedisson.map.JedissonHashMap;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -29,11 +32,11 @@ import com.alibaba.fastjson.JSON;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonHashMapTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")
-public class JedissonHashMapTest{
+public class JedissonHashMapTest extends JedissonBaseTest{
 
-	@Before
-	public void testBegin(){
-		IJedisson jedisson = Jedisson.getJedisson();
+	@BeforeClass
+	public void begin() throws InterruptedException{
+		super.begin();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",String.class,TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
@@ -46,9 +49,8 @@ public class JedissonHashMapTest{
 		}
 	}
 	
-	@After
+	@AfterClass
 	public void testEnd(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -57,7 +59,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonHashMapPut(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -80,7 +81,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapPutAll(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -106,20 +106,18 @@ public class JedissonHashMapTest{
 	}
 	@Test
 	public void testJedissonHashMapGet(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
 		
 		for(int i = 0; i < 10; i++){
 			TestObject test = map.get("test" + i);
-			System.out.println(test.getName());
+			Assert.assertEquals("test" + i, test.getName());
 		}
 	}
 	
 	@Test
 	public void testJedissonMapKeyIterator(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -134,7 +132,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapEntryIterator(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -148,7 +145,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapValues(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -160,7 +156,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapKeyIteratorRemove(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -177,7 +172,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapEntryIteratorRemove(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,TestObject> map = jedisson.getMap("myMap",
 				String.class,
 				TestObject.class);
@@ -193,7 +187,6 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonMapToMap(){
-		IJedisson jedisson = Jedisson.getJedisson();
 		JedissonHashMap<String,JedissonHashMap> map = jedisson.getMap("mapmap",
 				String.class,
 				JedissonHashMap.class);
@@ -215,38 +208,39 @@ public class JedissonHashMapTest{
 	
 	@Test
 	public void testJedissonAsyncMap() throws InterruptedException, ExecutionException{
-		IJedisson jedisson = Jedisson.getJedisson();
-		IJedissonMap<String,TestObject> map = jedisson.getMap("asyncMap",String.class,TestObject.class).withAsync();
+		IJedissonAsyncMap<String,TestObject> map = jedisson.getAsyncMap("asyncMap",String.class,TestObject.class);
 		
-		long startTime = System.currentTimeMillis();
-		List<IJedissonPromise<TestObject>> futures = new ArrayList<>();
-		for(int i = 0; i < 1000000; i++){
-			TestObject test = new TestObject();
-			test.setName("test" + i);
-			test.setAge(i);
-			test.getFriends().add("friends" + i);
-			test.getChilden().put("child" + i, new TestObject("child" + i,i));
-			map.fastPut(test.getName(), test);
+		final int count = 1000000;
+		{
+			long startTime = System.currentTimeMillis();
+			List<CompletableFuture> futures = new ArrayList<>();
+			for(int i = 0; i < count; i++){
+				TestObject test = new TestObject();
+				test.setName("test" + i);
+				test.setAge(i);
+				test.getFriends().add("friends" + i);
+				test.getChilden().put("child" + i, new TestObject("child" + i,i));
+				futures.add(map.fastPut(test.getName(), test));
+			}
+			
+			futures.stream().forEach(f -> f.join());
+			
+			Assert.assertEquals(count, map.size().join().intValue());
+			System.out.println("async put:" + count * 1000.0f / (System.currentTimeMillis() - startTime));	
 		}
 		
-		map.future().get();
-		
-		Assert.assertEquals(1000000, map.size());
-		System.out.println("async put:" + (System.currentTimeMillis() - startTime));
-		
-		futures.clear();
-		
-		startTime = System.currentTimeMillis();
-		for(int i = 0; i < 1000000; i++){
-			map.get("test" + i);
-//			futures.add(map.future());
+		{
+			List<CompletableFuture> futures = new ArrayList<>();
+			long startTime = System.currentTimeMillis();
+			for(int i = 0; i < count; i++){
+				futures.add(map.get("test" + i));
+			}
+			
+			futures.stream().forEach(f -> f.join());
+			System.out.println("async get:" + count * 1000.0f / (System.currentTimeMillis() - startTime));
+			map.clear();
 		}
 		
-		TestObject test = (TestObject) map.future().get();
-//		for(IJedissonFuture<TestObject> future : futures){
-//			TestObject test = future.get();
-//		}
-		System.out.println("async get:" + (System.currentTimeMillis() - startTime));
-		map.clear();
+	
 	}
 }

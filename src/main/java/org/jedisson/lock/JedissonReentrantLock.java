@@ -33,7 +33,7 @@ public class JedissonReentrantLock extends JedissonLock{
 	             "return redis.call('pttl', KEYS[1]);",
 				Long.class);
 		
-		return (Long) getJedisson().getConfiguration().getExecutor().execute(
+		return (Long) getJedisson().getExecutor().execute(
 				script, 
 				(IJedissonSerializer)null,
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -60,7 +60,7 @@ public class JedissonReentrantLock extends JedissonLock{
                  	"return 1; "+
                  "end; ",Boolean.class);
 		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		return (boolean) getJedisson().getExecutor().execute(
 				script,
 				(IJedissonSerializer)null,
 				Arrays.<byte[]>asList(getName().getBytes(), getChannelName().getBytes()),

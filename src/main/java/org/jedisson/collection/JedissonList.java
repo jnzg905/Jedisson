@@ -1,98 +1,53 @@
 package org.jedisson.collection;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.CompletableFuture;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonAsyncSupport;
-import org.jedisson.api.IJedissonPromise;
 import org.jedisson.api.IJedissonList;
 import org.jedisson.api.IJedissonSerializer;
-import org.jedisson.async.JedissonCommand;
-import org.jedisson.async.JedissonCommand.LINDEX;
-import org.jedisson.async.JedissonPromise;
-import org.jedisson.common.JedissonObject;
+import org.jedisson.api.collection.IJedissonAsyncList;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.util.Assert;
 
 public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJedissonList<E>{
 	
-	public JedissonList(final String name, Class<E> clss, IJedissonSerializer serializer, final Jedisson jedisson){
-		super(name,clss,serializer,jedisson);
+	private IJedissonAsyncList<E> asyncList;
+	
+	public JedissonList(final String name, IJedissonSerializer<E> serializer, final Jedisson jedisson){
+		super(name,serializer,jedisson);
+		asyncList = jedisson.getAsyncList(name, serializer);
 	}
 	
 	@Override
 	public E get(final int index) {
-		return (E) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<E>(){
-
-			@Override
-			public E doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				return (E) getSerializer().deserialize(connection.lIndex(getName().getBytes(), index));
-			}
-			
-		});
+		return asyncList.get(index).join();	
 	}
 
 	@Override
 	public int size() {
-		return (int) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Integer>(){
-
-			@Override
-			public Integer doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				return connection.lLen(getName().getBytes()).intValue();
-			}
-			
-		});
+		return asyncList.size().join().intValue();
 	}
 
 	@Override
 	public boolean add(final E e) {
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
-
-			@Override
-			public Boolean doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				byte[] v = getSerializer().serialize(e);
-				connection.rPush(getName().getBytes(), v);
-				return true;
-			}
-			
-		});
+		asyncList.add(e).join();
+		return true;
 	}
 
 	@Override
 	public boolean addAll(final Collection<? extends E> c) {
 		Assert.notEmpty(c, "Values must not be 'null' or empty.");
-		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
-
-			@Override
-			public Boolean doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				byte[][] values = new byte[c.size()][];
-				int i = 0;
-				for(E v : c){
-					values[i++] = getSerializer().serialize(v);
-				}
-				connection.rPush(getName().getBytes(), values);
-				return true;
-			}
-			
-		});
+		asyncList.addAll(c).join();
+		return true;
 	}
 
 	@Override
@@ -102,70 +57,16 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
 		}
 		Assert.notEmpty(c, "Values must not be 'null' or empty.");
 		
-		if(index == 0){
-			final List<E> elements = new ArrayList<>();
-			elements.addAll(c);
-			Collections.reverse(elements);
-			return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
-
-				@Override
-				public Boolean doInRedis(RedisConnection connection)
-						throws DataAccessException {
-					byte[][] values = new byte[c.size()][];
-					int i = 0;
-					for(E v : elements){
-						values[i++] = getSerializer().serialize(v);
-					}
-					connection.lPush(getName().getBytes(),values);
-					return true;
-				}
-				
-			});
-		}
-		
-		List<byte[]> params = new ArrayList<>(c.size() + 1);
-		params.add(getSerializer().serialize(index));
-		for(E e : c){
-			params.add(getSerializer().serialize(e));
-		}
-		DefaultRedisScript<Boolean> script = new DefaultRedisScript<>(
-				"local index = table.remove(ARGV, 1); " + // index is the first parameter
-                "local size = redis.call('llen', KEYS[1]); " +
-                "assert(tonumber(index) <= size, 'index: ' .. index .. ' but current size: ' .. size); " +
-                "local tail = redis.call('lrange', KEYS[1], index, -1); " +
-                "redis.call('ltrim', KEYS[1], 0, index - 1); " +
-                "for i=1, #ARGV, 5000 do "
-                    + "redis.call('rpush', KEYS[1], unpack(ARGV, i, math.min(i+4999, #ARGV))); "
-                + "end " +
-                "if #tail > 0 then " +
-                    "for i=1, #tail, 5000 do "
-                        + "redis.call('rpush', KEYS[1], unpack(tail, i, math.min(i+4999, #tail))); "
-                  + "end "
-              + "end;" +
-                "return 1;",Boolean.class);
-				
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()),
-				params.toArray());
+		return asyncList.addAll(index, c).join();
 	}
 
 	@Override
 	public E set(int index, E element) {
-		RedisScript<byte[]> script = new DefaultRedisScript<>(
-				"local v = redis.call('lindex', KEYS[1], ARGV[1]); " +
-                "redis.call('lset', KEYS[1], ARGV[1], ARGV[2]); " +
-                "return v",byte[].class);
-		return (E) getJedisson().getConfiguration().getExecutor().execute(script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				getSerializer().serialize(index),
-				getSerializer().serialize(element));
+		return asyncList.set(index, element).join();
 	}
 
 	protected void fastSet(final int index, final E element){
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -184,94 +85,28 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
 
 	@Override
 	public E remove(final int index) {
-		if(index == 0){
-			return (E) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<E>(){
-
-				@Override
-				public E doInRedis(RedisConnection connection)
-						throws DataAccessException {
-					return (E) getSerializer().deserialize(connection.lPop(getName().getBytes()));
-				}
-				
-			});
-		}
-		RedisScript<byte[]> script = new DefaultRedisScript<>(
-				"local v = redis.call('lindex', KEYS[1], ARGV[1]); " +
-                "redis.call('lset', KEYS[1], ARGV[1], 'DELETED_BY_JEDISSON');" +
-                "redis.call('lrem', KEYS[1], 1, 'DELETED_BY_JEDISSON');" +
-                "return v",byte[].class);
-		return (E) getJedisson().getConfiguration().getExecutor().execute(
-				script, 
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				getSerializer().serialize(index));
+		return asyncList.remove(index).join();
 	}
 
 	@Override
 	public boolean remove(final Object o) {
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
-
-			@Override
-			public Boolean doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				long ret = connection.lRem(getName().getBytes(), 1, getSerializer().serialize((E) o));
-				return ret == 0 ? false : true;
-			}
-			
-		});
+		return (asyncList.remove(o).join() == 0) ? false : true;
 	}
 
 	@Override
 	public int indexOf(Object o) {
-		RedisScript<Long> script = new DefaultRedisScript<>(
-				"local key = KEYS[1]; " +
-                "local obj = ARGV[1]; " +
-                "local items = redis.call('lrange', key, 0, -1); " +
-                "for i=1, #items do " +
-                    "if items[i] == obj then " +
-                        "return i - 1 " +
-                    "end " +
-                "end " +
-                "return -1",Long.class);		
-		return ((Long)getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				getSerializer().serialize((E) o))).intValue();
+		return asyncList.indexOf(o).join().intValue();
 	}
 
 	@Override
 	public int lastIndexOf(final Object o) {
-		RedisScript<Long> script = new DefaultRedisScript<>(
-				"local key = KEYS[1]; " +
-                "local obj = ARGV[1]; " +
-                "local items = redis.call('lrange', key, 0, -1); " +
-                "for i = #items, 1, -1 do " +
-                    "if items[i] == obj then " +
-                        "return i - 1 " +
-                    "end " +
-                "end " +
-                "return -1",Long.class);
-		return ((Long)getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()),
-				getSerializer().serialize((E) o))).intValue();
+		return asyncList.lastIndexOf(o).join().intValue();
 	}
 
 	
 	@Override
 	public void clear() {
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
-
-			@Override
-			public Object doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				connection.del(getName().getBytes());
-				return null;
-			}
-			
-		});
+		asyncList.clear().join();
 	}
 
 	@Override
@@ -291,138 +126,46 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
 
 	@Override
 	public Object[] toArray() {
-		return (Object[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object[]>(){
-
-			@Override
-			public Object[] doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				List<byte[]> values = connection.lRange(getName().getBytes(), 0, -1);
-				Object[] objs = new Object[values.size()];
-				for(int i = 0; i < values.size(); i++){
-					objs[i] = getSerializer().deserialize(values.get(i));
-				}
-				return objs;
-			}
-			
-		});
+		return asyncList.toArray().thenApply(values -> {
+			return values.toArray();
+		}).join();
 	}
 
 	@Override
 	public <T> T[] toArray(final T[] a) {
-		return (T[]) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<T[]>(){
-
-			@Override
-			public T[] doInRedis(RedisConnection connection)
-					throws DataAccessException {
-				List<byte[]> values = connection.lRange(getName().getBytes(), 0, -1);
-				int size = values.size();
-				if(a.length < size){
-					T[] copy = ((Object)a == (Object)Object[].class)
-				            ? (T[]) new Object[size]
-				            : (T[]) Array.newInstance(a.getClass().getComponentType(), size);
-					for(int i = 0 ; i < copy.length; i++){
-						copy[i] = (T) getSerializer().deserialize(values.get(i));
-					}
-					return (T[]) copy;
-				}else{
-					for(int i = 0 ; i < size; i++){
-						a[i] = (T) getSerializer().deserialize(values.get(i));
-					}
-					a[size] = null;
-					return a;
-				}		
-			}
-			
-		});
+		return asyncList.toArray().thenApply(values -> {
+			int size = values.size();
+			if(a.length < size){
+				T[] copy = ((Object)a == (Object)Object[].class)
+			            ? (T[]) new Object[size]
+			            : (T[]) Array.newInstance(a.getClass().getComponentType(), size);
+				for(int i = 0 ; i < copy.length; i++){
+					copy[i] = (T) values.get(i);
+				}
+				return copy;
+			}else{
+				for(int i = 0 ; i < size; i++){
+					a[i] = (T) values.get(i);
+				}
+				a[size] = null;
+				return a;
+			}	
+		}).join();
 	}
 
 	@Override
 	public boolean containsAll(Collection<?> c) {
-		if(c.isEmpty()){
-			return true;
-		}
-		
-		List<byte[]> params = new LinkedList<>();
-		for(Object v : c){
-			params.add(getSerializer().serialize(v));
-		}
-		RedisScript<Boolean> script = new DefaultRedisScript<>(
-				"local items = redis.call('lrange', KEYS[1], 0, -1) " +
-                "for i=1, #items do " +
-                "for j = 1, #ARGV, 1 do " +
-                    "if items[i] == ARGV[j] then " +
-                        "table.remove(ARGV, j) " +
-                    "end " +
-                "end " +
-            "end " +
-            "return #ARGV == 0 and 1 or 0",Boolean.class);
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				params.toArray());
+		return asyncList.containsAll(c).join();
 	}
 
 	@Override
 	public boolean removeAll(Collection<?> c) {
-		if(c.isEmpty()){
-			return true;
-		}
-		
-		List<byte[]> params = new LinkedList<>();
-		for(Object v : c){
-			params.add(getSerializer().serialize(v));
-		}
-		RedisScript<Boolean> script = new DefaultRedisScript<>(
-				"local v = 0; " +
-                "for i = 1, #ARGV, 1 do " + 
-					"if redis.call('lrem', KEYS[1], 0, ARGV[i]) == 1 then " +
-						"v = 1;" + 
-					" end " +
-                "end " + 
-				"return v ",Boolean.class);
-		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				params.toArray());
+		return asyncList.removeAll(c).join();
 	}
 
 	@Override
 	public boolean retainAll(Collection<?> c) {
-		if(c.isEmpty()){
-			clear();
-		}
-		
-		List<byte[]> params = new LinkedList<>();
-		for(Object v : c){
-			params.add(getSerializer().serialize(v));
-		}
-		RedisScript<Boolean> script = new DefaultRedisScript<>(
-				"local changed = 0 " +
-                "local items = redis.call('lrange', KEYS[1], 0, -1) "
-                + "local i = 1 "
-                + "while i <= #items do "
-                     + "local element = items[i] "
-                     + "local isInAgrs = false "
-                     + "for j = 1, #ARGV, 1 do "
-                         + "if ARGV[j] == element then "
-                             + "isInAgrs = true "
-                             + "break "
-                         + "end "
-                     + "end "
-                     + "if isInAgrs == false then "
-                         + "redis.call('LREM', KEYS[1], 0, element) "
-                         + "changed = 1 "
-                     + "end "
-                     + "i = i + 1 "
-                + "end "
-                + "return changed ",Boolean.class);
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(
-				script,
-				getSerializer(),
-				Collections.<byte[]>singletonList(getName().getBytes()), 
-				params.toArray());
+		return asyncList.retainAll(c).join();
 	}
 
 	@Override
@@ -432,7 +175,6 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
 
 	@Override
 	public ListIterator<E> listIterator() {
-		// TODO Auto-generated method stub
 		return listIterator(0);
 	}
 
@@ -532,23 +274,4 @@ public class JedissonList<E> extends AbstractJedissonCollection<E> implements IJ
             }
 		};
 	}
-
-	@Override
-	public IJedissonList<E> withAsync() {
-		return new JedissonAsyncList(getName(),getClss(), getSerializer(),getJedisson());
-	}
-
-	@Override
-	public <R> IJedissonPromise<R> future() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public boolean isAsync() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	
 }

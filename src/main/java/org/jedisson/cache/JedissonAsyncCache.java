@@ -8,152 +8,154 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+import javax.cache.Cache.Entry;
+import javax.cache.integration.CacheLoader;
+import javax.cache.integration.CacheWriter;
 
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonCache;
-import org.jedisson.api.IJedissonCacheConfiguration;
-import org.jedisson.api.IJedissonPromise;
-import org.jedisson.api.IJedissonPromise.IPromiseListener;
+import org.jedisson.api.IJedissonAsyncCache;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.async.JedissonCommand.DEL;
 import org.jedisson.async.JedissonCommand.EVALSHA;
 import org.jedisson.async.JedissonCommand.HDEL;
 import org.jedisson.async.JedissonCommand.HEXISTS;
 import org.jedisson.async.JedissonCommand.HGET;
+import org.jedisson.async.JedissonCommand.HLEN;
 import org.jedisson.async.JedissonCommand.HMGET;
 import org.jedisson.async.JedissonCommand.HMSET;
 import org.jedisson.async.JedissonCommand.HSET;
 import org.jedisson.async.JedissonCommand.HSETNX;
-import org.jedisson.async.JedissonPromise;
+import org.jedisson.util.JedissonUtil;
+import org.jedisson.common.JedissonObject;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.util.Assert;
 
-public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
+public class JedissonAsyncCache<K,V> extends JedissonObject implements IJedissonAsyncCache<K,V>{
 
-	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
+	private JedissonCacheConfiguration<K,V> configuration;
 	
-	public JedissonAsyncCache(String name,
-			IJedissonCacheConfiguration<K, V> configuration, Jedisson jedisson) {
-		super(name, configuration, jedisson);
-		// TODO Auto-generated constructor stub
+	protected CacheLoader<K,V> cacheLoader;
+	
+	protected CacheWriter<K,V> cacheWriter;
+	
+	public JedissonAsyncCache(String name,JedissonCacheConfiguration<K, V> configuration, Jedisson jedisson) {
+		super(name, jedisson);
+		this.configuration = (JedissonCacheConfiguration<K, V>) configuration;
+		if(this.configuration.getKeySerializer() == null){
+			this.configuration.setKeySerializer(JedissonUtil.newSerializer(
+							getJedisson().getConfiguration().getKeySerializerType(),
+							this.configuration.getKeyType()));
+		}
+		if(this.configuration.getValueSerializer() == null){
+			this.configuration.setValueSerializer(JedissonUtil.newSerializer(
+					getJedisson().getConfiguration().getValueSerializerType(), 
+					this.configuration.getValueType()));
+		}
+		
+		if(this.configuration.getCacheLoaderFactory() != null){
+			cacheLoader = this.configuration.getCacheLoaderFactory().create();
+		}
+		if(this.configuration.getCacheWriterFactory() != null){
+			cacheWriter = (CacheWriter<K, V>) this.configuration.getCacheWriterFactory().create();
+		}
 	}
 
 	@Override
-	public V get(K key) {
+	public CompletableFuture<V> get(K key) {
 		if (key == null) {
-			throw new NullPointerException("map key can't be null");
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException("map key can't be null");	
+			});
+				
 		}
 	
 		final IJedissonSerializer<K> keySerializer = getConfiguration().getKeySerializer();
-		final IJedissonSerializer<V> valueSerializer = getConfiguration().getValueSerializer();
+		final IJedissonSerializer valueSerializer = getConfiguration().getValueSerializer();
 		Assert.notNull(keySerializer);
 		Assert.notNull(valueSerializer);
 		
-		IJedissonPromise<V> promise = new JedissonPromise<>(valueSerializer);
-		try{
-			IJedissonPromise<V> internalPromise = new JedissonPromise<>(valueSerializer);
-			HGET command = new HGET(internalPromise,getName().getBytes(),keySerializer.serialize(key));
-			getJedisson().getAsyncService().sendCommand(command);
-			internalPromise.onSuccess(new IPromiseListener<IJedissonPromise>(){
-				
-				@Override
-				public IJedissonPromise apply(IJedissonPromise p) {
-					try{
-						V value = (V) p.get();	
-						if(value == null && cacheLoader != null){
-							value = cacheLoader.load(key);
-							if(value != null){
-								byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
-								byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
-								HSET command = new HSET(promise,getName().getBytes(),rawKey,rawValue);
-								getJedisson().getAsyncService().sendCommand(command);
-							}else{
-								promise.setSuccess(value);
-							}
-						}else{
-							promise.setSuccess(value);
-						}
-					}catch(Exception e){
-						promise.setFailure(e);
-					}
-					return p;
+		HGET<V> command = new HGET<>(valueSerializer,getName().getBytes(),keySerializer.serialize(key));
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(v -> { 
+			if(v == null && cacheLoader != null){
+				V value = cacheLoader.load(key);
+				if(value != null){
+					byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
+					byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
+					return getJedisson().getAsyncService().execCommand(new HSET(getName().getBytes(),rawKey,rawValue)).thenApply(t -> value);
+				}else{
+					return CompletableFuture.completedFuture(v);
 				}
-				
-			});
-		}catch(InterruptedException e){
-			promise.setFailure(e);
-		}
-		currFuture.set(promise);
-		return null;
+			}else{
+				return CompletableFuture.completedFuture(v);
+			}
+		});
 	}
 
 	@Override
-	public Map<K, V> getAll(Set<? extends K> keys) {
+	public CompletableFuture<? extends Map<K, V>> getAll(Set<? extends K> keys) {
 		if(keys == null || keys.contains(null)){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
 		
-		IJedissonPromise<V> promise = new JedissonPromise<>(getConfiguration().getValueSerializer());
-		try{
-			byte[][] fields = new byte[keys.size()][];
-			int i = 0;
+		byte[][] fields = new byte[keys.size()][];
+		int i = 0;
+		for(K key : keys){
+			fields[i++] = getConfiguration().getKeySerializer().serialize(key);
+		}
+		HMGET command = new HMGET(getConfiguration().getValueSerializer(),getName().getBytes(),fields);
+		return getJedisson().getAsyncService().execCommand(command).thenApply(v -> {
+			int n = 0;
+			List<V> results = (List<V>)v;
+			Map<K,V> maps = new HashMap<>();
 			for(K key : keys){
-				fields[i++] = getConfiguration().getKeySerializer().serialize(key);
+				maps.put(key,results.get(n++));
 			}
-			HMGET command = new HMGET(promise,getName().getBytes(),fields);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			promise.setFailure(e);
-		}
-		currFuture.set(promise);
-		return null;
+			return maps;
+		});
 	}
 
 	@Override
-	public void put(K key, V value) {
+	public CompletableFuture<Long> put(K key, V value) {
 		if (key == null) {
-			throw new NullPointerException("map key can't be null");
-		}
-		if (value == null) {
-			throw new NullPointerException("map value can't be null");
-		}
-		IJedissonPromise<V> promise = new JedissonPromise<>(getConfiguration().getValueSerializer());
-		try{
-			IJedissonPromise<V> internalPromise = new JedissonPromise<>(getConfiguration().getValueSerializer());
-			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
-			byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
-			HSET command = new HSET(internalPromise,getName().getBytes(),rawKey,rawValue);
-			getJedisson().getAsyncService().sendCommand(command);
-			internalPromise.onSuccess(new IPromiseListener<IJedissonPromise>(){
-
-				@Override
-				public IJedissonPromise apply(IJedissonPromise p) {
-					try{
-						Boolean result = (Boolean) p.get();	
-						if(result && cacheWriter != null){
-							cacheWriter.write(new JedissonCacheEntry(key,value));
-						}	
-						promise.setSuccess(result);
-					}catch(Exception e){
-						promise.setFailure(e);
-					}
-					return p;
-				}
-				
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException("map key can't be null");	
 			});
-		}catch(InterruptedException e){
-			promise.setFailure(e);
+				
 		}
-		currFuture.set(promise);
+		if (value == null) {
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException("map value can't be null");	
+			});
+		}
+		
+		byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
+		byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
+		HSET command = new HSET(getName().getBytes(),rawKey,rawValue);
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(result -> {
+			if(result != 0 && cacheWriter != null){
+				cacheWriter.write(new JedissonCacheEntry<K,V>(key,value));
+			}
+			return CompletableFuture.completedFuture(result);
+		});
+				
 	}
 
 	@Override
-	public V getAndPut(K key, V value) {
+	public CompletableFuture<V> getAndPut(K key, V value) {
 		if (key == null) {
-			throw new NullPointerException("map key can't be null");
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException("map key can't be null");	
+			});
+			
 		}
 		if (value == null) {
-			throw new NullPointerException("map value can't be null");
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException("map value can't be null");	
+			});
 		}
 		
 		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
@@ -161,120 +163,122 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 				"redis.call('hset', KEYS[1], ARGV[1],ARGV[2]); " + 
 				"return v;", 
 				byte[].class);
-		
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[][] fields = new byte[3][];
-			int i = 0;
-			fields[i++] = getName().getBytes();
-			fields[i++] = getConfiguration().getKeySerializer().serialize(key);
-			fields[i++] = getConfiguration().getValueSerializer().serialize(value);
-			EVALSHA command = new EVALSHA(future,script,1,fields);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
-		return null;
+		return CompletableFuture.supplyAsync(() -> {
+			return getJedisson().getExecutor().execute(script, getConfiguration().getValueSerializer(), 
+					Collections.<byte[]>singletonList(getName().getBytes()), 
+					getConfiguration().getKeySerializer().serialize(key),
+					getConfiguration().getValueSerializer().serialize(value));
+		}).thenApply(v -> {
+			if(cacheWriter != null){
+				cacheWriter.write(new JedissonCacheEntry<K,V>(key,value));
+			}
+			return (V) v;
+		});
 	}
 
 	@Override
-	public boolean containsKey(K key) {
+	public CompletableFuture<Boolean> containsKey(K key) {
 		if(key == null){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
-			HEXISTS command = new HEXISTS(future,getName().getBytes(),rawKey);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
-		return true;
+		byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
+		HEXISTS command = new HEXISTS(getName().getBytes(),rawKey);
+		return getJedisson().getAsyncService().execCommand(command);
 	}
 
 	@Override
-	public boolean putIfAbsent(K key, V value) {
+	public CompletableFuture<Boolean> putIfAbsent(K key, V value) {
 		if(key == null || value == null){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
-			byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
-			HSETNX command = new HSETNX(future,getName().getBytes(),rawKey,rawValue);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
-		return true;
+		
+		byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
+		byte[] rawValue = getConfiguration().getValueSerializer().serialize(value);
+		HSETNX command = new HSETNX(getName().getBytes(),rawKey,rawValue);
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(v -> {
+			if(v && cacheWriter != null){
+				cacheWriter.write(new JedissonCacheEntry<K,V>(key,value));	
+			}
+			return CompletableFuture.completedFuture(v);
+		});
 	}
 
 	@Override
-	public void putAll(Map<? extends K, ? extends V> map) {
+	public CompletableFuture<Void> putAll(Map<? extends K, ? extends V> map) {
 		if(map == null || map.containsKey(null)){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(map.size());
 
-			for (Map.Entry<? extends K, ? extends V> entry : map.entrySet()) {
-				hashes.put(getConfiguration().getKeySerializer().serialize(entry.getKey()), 
-						getConfiguration().getValueSerializer().serialize(entry.getValue()));
+		final Map<byte[], byte[]> hashes = new LinkedHashMap<byte[], byte[]>(map.size());
+		for (Map.Entry<? extends K, ? extends V> entry : map.entrySet()) {
+			hashes.put(getConfiguration().getKeySerializer().serialize(entry.getKey()), 
+					getConfiguration().getValueSerializer().serialize(entry.getValue()));
+		}
+		HMSET command = new HMSET(getName().getBytes(),hashes);
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(v -> {
+			if(cacheWriter != null){
+				List<Entry<? extends K, ? extends V>> valueList = new LinkedList<>();
+				for(Map.Entry<? extends  K, ? extends V> entry : map.entrySet()){
+					valueList.add(new JedissonCacheEntry<K,V>(entry.getKey(),entry.getValue()));
+				}
+				cacheWriter.writeAll(valueList);
 			}
-			HMSET command = new HMSET(future,getName().getBytes(),hashes);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
+			return CompletableFuture.completedFuture(null);
+		});
 	}
 
 	@Override
-	public boolean remove(K key) {
+	public CompletableFuture<Long> remove(K key) {
 		if(key == null){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
-			HDEL command = new HDEL(future,getName().getBytes(),rawKey);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
-		return true;
+
+		byte[] rawKey = getConfiguration().getKeySerializer().serialize(key);
+		HDEL command = new HDEL(getName().getBytes(),rawKey);
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(v -> {
+			if(v != 0 && cacheWriter != null){
+				cacheWriter.delete(key);
+			}
+			return CompletableFuture.completedFuture(v);
+		});
 	}
 
 	@Override
-	public void removeAll(Set<? extends K> keys) {
+	public CompletableFuture<Long> removeAll(Set<? extends K> keys) {
 		if(keys == null || keys.contains(null)){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[][] fields = new byte[keys.size()][];
-			int i = 0;
-			for(K key : keys){
-				fields[i++] = getConfiguration().getKeySerializer().serialize(key);
-			}
-			HDEL command = new HDEL(future,getName().getBytes(),fields);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
+		
+		byte[][] fields = new byte[keys.size()][];
+		int i = 0;
+		for(K key : keys){
+			fields[i++] = getConfiguration().getKeySerializer().serialize(key);
 		}
-		currFuture.set(future);
+		HDEL command = new HDEL(getName().getBytes(),fields);
+		return getJedisson().getAsyncService().execCommand(command).thenCompose(v -> {
+			if(v != 0 && cacheWriter != null){
+				cacheWriter.deleteAll(keys);
+			}	
+			return CompletableFuture.completedFuture(v);
+		});
 	}
 
 	@Override
-	public V getAndRemove(K key) {
+	public CompletableFuture<V> getAndRemove(K key) {
 		if(key == null){
-			throw new NullPointerException();
+			CompletableFuture.completedFuture(null).exceptionally(v -> {
+				throw new NullPointerException();	
+			});
 		}
 		
 		DefaultRedisScript<byte[]> script = new DefaultRedisScript<>(
@@ -283,46 +287,48 @@ public class JedissonAsyncCache<K,V> extends JedissonCache<K,V>{
 				"return v;", 
 				byte[].class);
 		
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			byte[][] fields = new byte[2][];
-			int i = 0;
-			fields[i++] = getName().getBytes();
-			fields[i++] = getConfiguration().getKeySerializer().serialize(key);
-			EVALSHA command = new EVALSHA(future,script,1,fields);
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
+		byte[][] fields = new byte[2][];
+		int i = 0;
+		fields[i++] = getName().getBytes();
+		fields[i++] = getConfiguration().getKeySerializer().serialize(key);		
+		return CompletableFuture.supplyAsync(() -> {
+			return getJedisson().getExecutor().execute(script, getConfiguration().getValueSerializer(), 
+					Collections.<byte[]>singletonList(getName().getBytes()), 
+					getConfiguration().getKeySerializer().serialize(key));
+		}).thenApply(v -> {
+			if(cacheWriter != null){
+				cacheWriter.delete(key);
+			}
+			return (V) v;
+		});
+	}
+
+	@Override
+	public CompletableFuture<Long> clear() {
+		DEL command = new DEL(getName().getBytes());
+		return getJedisson().getAsyncService().execCommand(command);
+		
+	}
+
+	@Override
+	public JedissonCacheConfiguration<K, V> getConfiguration() {
+		return configuration;
+	}
+
+	@Override
+	public CompletableFuture<Long> removeAll() {
+		return clear();
+	}
+
+	@Override
+	public Iterator<Entry<K, V>> iterator() {
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public void clear() {
-		IJedissonPromise future = new JedissonPromise(getConfiguration().getValueSerializer());
-		try{
-			DEL command = new DEL(future,getName().getBytes());
-			getJedisson().getAsyncService().sendCommand(command);
-		}catch(InterruptedException e){
-			e.printStackTrace();
-		}
-		currFuture.set(future);
+	public CompletableFuture<Long> size() {
+		HLEN command = new HLEN(getName().getBytes());
+		return getJedisson().getAsyncService().execCommand(command);
 	}
-
-	@Override
-	public IJedissonCache<K,V> withAsync() {
-		return this;
-	}
-
-	@Override
-	public boolean isAsync() {
-		return true;
-	}
-
-	@Override
-	public <R> IJedissonPromise<R> future() {
-		return currFuture.get();
-	}
-
 }

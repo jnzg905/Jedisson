@@ -77,7 +77,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		final IJedissonSerializer<K> keySerializer = configuration.getKeySerializer();
 		final IJedissonSerializer<V> valueSerializer = configuration.getValueSerializer();
 		
-		return (V) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<V>(){
+		return (V) getJedisson().getExecutor().execute(new RedisCallback<V>(){
 
 			@Override
 			public V doInRedis(RedisConnection connection)
@@ -106,7 +106,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		if(keys == null || keys.contains(null)){
 			throw new NullPointerException();
 		}	
-		return (Map<K, V>) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Map<K,V>>(){
+		return (Map<K, V>) getJedisson().getExecutor().execute(new RedisCallback<Map<K,V>>(){
 
 			@Override
 			public Map<K, V> doInRedis(RedisConnection connection)
@@ -147,7 +147,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 			throw new NullPointerException();
 		}
 		
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -201,7 +201,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 			throw new NullPointerException("map value can't be null");
 		}
 		
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -237,7 +237,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 				"return v;", 
 				byte[].class);
 		
-		V v = (V) getJedisson().getConfiguration().getExecutor().execute(
+		V v = (V) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -259,7 +259,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 			throw new NullPointerException();
 		}
 		
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -292,7 +292,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		if(key == null || value == null){
 			throw new NullPointerException();
 		}
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -316,7 +316,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		if(key == null){
 			throw new NullPointerException();
 		}
-		return (boolean) getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Boolean>(){
+		return (boolean) getJedisson().getExecutor().execute(new RedisCallback<Boolean>(){
 
 			@Override
 			public Boolean doInRedis(RedisConnection connection)
@@ -348,7 +348,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 				"end;", 
 				Boolean.class);
 		
-		boolean ret = (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		boolean ret = (boolean) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -375,7 +375,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 				"redis.call('hdel', KEYS[1], ARGV[1]); " + 
 				"return v;", 
 				byte[].class);
-		V v = (V) getJedisson().getConfiguration().getExecutor().execute(
+		V v = (V) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -404,7 +404,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 					"return 0;" + 
 				"end;", 
 				Boolean.class);
-		boolean ret = (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		boolean ret = (boolean) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -435,7 +435,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 					"return 0;" + 
 				"end;", 
 				Boolean.class);
-		boolean ret = (boolean) getJedisson().getConfiguration().getExecutor().execute(
+		boolean ret = (boolean) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -465,7 +465,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 					"return nil;" + 
 				"end;", 
 				String.class);
-		V v = (V) getJedisson().getConfiguration().getExecutor().execute(
+		V v = (V) getJedisson().getExecutor().execute(
 				script,
 				configuration.getValueSerializer(),
 				Collections.<byte[]>singletonList(getName().getBytes()),
@@ -487,7 +487,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 			throw new NullPointerException();
 		}
 		
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -517,7 +517,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 			throw new IllegalStateException("Cache:" + getName() + " is closed.");
 		}
 		
-		getJedisson().getConfiguration().getExecutor().execute(new RedisCallback<Object>(){
+		getJedisson().getExecutor().execute(new RedisCallback<Object>(){
 
 			@Override
 			public Object doInRedis(RedisConnection connection)
@@ -628,7 +628,7 @@ public class JedissonJsr107Cache<K,V> extends JedissonObject implements Cache<K,
 		if(isClosed()){
 			throw new IllegalStateException("Cache:" + getName() + " is closed.");
 		}
-		RedisConnection connection = getJedisson().getConfiguration().getExecutor().getConnectionFactory().getConnection();
+		RedisConnection connection = getJedisson().getExecutor().getConnectionFactory().getConnection();
 		return new EntryIterator(connection.hScan(getName().getBytes(),ScanOptions.scanOptions().build()), connection);
 	}
 	

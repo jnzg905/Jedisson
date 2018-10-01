@@ -7,12 +7,11 @@ import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.integration.CacheLoader;
 import javax.cache.integration.CacheWriter;
 
-import org.jedisson.api.IJedissonCacheConfiguration;
 import org.jedisson.api.IJedissonSerializer;
 import org.jedisson.serializer.JedissonFastJsonSerializer;
 import org.jedisson.serializer.JedissonStringSerializer;
 
-public class JedissonCacheConfiguration<K,V> implements IJedissonCacheConfiguration<K,V>,Serializable {
+public class JedissonCacheConfiguration<K,V> implements Serializable {
 	
 	protected Class<K> keyType;
 	
@@ -38,55 +37,46 @@ public class JedissonCacheConfiguration<K,V> implements IJedissonCacheConfigurat
 	
 	private IJedissonSerializer<V> valueSerializer;
 	
-	@Override
 	public Class<K> getKeyType() {
 		// TODO Auto-generated method stub
 		return keyType;
 	}
 
-	@Override
 	public Class<V> getValueType() {
 		// TODO Auto-generated method stub
 		return valueType;
 	}
 
-	@Override
 	public boolean isReadThrough() {
 		// TODO Auto-generated method stub
 		return isReadThrough;
 	}
 
-	@Override
 	public boolean isWriteThrough() {
 		// TODO Auto-generated method stub
 		return isWriteThrough;
 	}
 
-	@Override
 	public boolean isStatisticsEnabled() {
 		// TODO Auto-generated method stub
 		return isStatisticsEnabled;
 	}
 
-	@Override
 	public boolean isManagementEnabled() {
 		// TODO Auto-generated method stub
 		return isManagementEnabled;
 	}
 
-	@Override
 	public Factory<CacheLoader<K, V>> getCacheLoaderFactory() {
 		// TODO Auto-generated method stub
 		return cacheLoaderFactory;
 	}
 
-	@Override
 	public Factory<CacheWriter<? super K, ? super V>> getCacheWriterFactory() {
 		// TODO Auto-generated method stub
 		return cacheWriterFactory;
 	}
 
-	@Override
 	public Factory<ExpiryPolicy> getExpiryPolicyFactory() {
 		// TODO Auto-generated method stub
 		return expiryPolicyFactory;

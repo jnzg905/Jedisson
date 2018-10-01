@@ -10,7 +10,7 @@ public abstract class AbstractJedissonMap<K,V> extends JedissonObject{
 	
 	private final IJedissonSerializer<K> keySerializer;
 	
-	private final IJedissonSerializer<V> valueSerializer;
+	private final IJedissonSerializer valueSerializer;
 	
 	public AbstractJedissonMap(String name, IJedissonSerializer<K> keySerializer, IJedissonSerializer<V> valueSerializer, Jedisson jedisson) {
 		super(name, jedisson);
@@ -18,7 +18,7 @@ public abstract class AbstractJedissonMap<K,V> extends JedissonObject{
 		this.valueSerializer = valueSerializer;
 	}
 
-	public IJedissonSerializer<V> getValueSerializer() {
+	public IJedissonSerializer getValueSerializer() {
 		return valueSerializer;
 	}
 

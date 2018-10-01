@@ -13,7 +13,9 @@ public interface IJedissonRedisExecutor {
 	
 	public <T> T execute(RedisCallback<T> callback);	
 
-	public <T> T execute(RedisScript<T> script, IJedissonSerializer<?> resultSerializer, List keys, Object... args);
-	
+	public <T> T execute(RedisScript<?> script, IJedissonSerializer<?> resultSerializer, List keys, Object... args);
+
 	public RedisConnectionFactory getConnectionFactory();
+	
+	public Object deserializeMixedResults(Object rawValues, RedisSerializer valueSerializer);
 }

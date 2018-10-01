@@ -17,8 +17,10 @@ import javax.cache.expiry.Duration;
 import javax.cache.spi.CachingProvider;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,7 +35,7 @@ import com.alibaba.fastjson.JSON;
 @SpringBootApplication(scanBasePackages="org.jedisson")
 public class TestJedissonJsr107Cache{
 
-	@Before
+	@BeforeClass
 	public void testBegin(){
 		CachingProvider provider = Caching.getCachingProvider();
 		CacheManager cacheManager = provider.getCacheManager();
@@ -56,7 +58,7 @@ public class TestJedissonJsr107Cache{
 		}
 	}
 	
-	@After
+	@AfterClass
 	public void testEnd(){
 		CachingProvider provider = Caching.getCachingProvider();
 		CacheManager cacheManager = provider.getCacheManager();

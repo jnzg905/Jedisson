@@ -9,7 +9,7 @@ import org.jedisson.common.JedissonObject;
 
 public abstract class AbstractJedissonBlockingQueue<T> extends JedissonObject implements IJedissonBlockingQueue<T>{
 
-	private IJedissonSerializer serializer;
+	private IJedissonSerializer<?> serializer;
 	
 	public AbstractJedissonBlockingQueue(String name, IJedissonSerializer<T> serializer, Jedisson jedisson) {
 		super(name, jedisson);

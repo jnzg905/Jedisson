@@ -1,47 +1,39 @@
 package org.jedisson.pubsub;
 
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.jedisson.Jedisson;
-import org.jedisson.api.IJedissonPromise;
-import org.jedisson.api.IJedissonPubSub;
+import org.jedisson.api.IJedissonAsyncPubSub;
 import org.jedisson.api.IJedissonSerializer;
-import org.jedisson.async.JedissonPromise;
 import org.jedisson.async.JedissonCommand.PUBLISH;
 
-public class JedissonAsyncPubSub extends JedissonPubSub{
-
-	private static final ThreadLocal<IJedissonPromise> currFuture = new ThreadLocal<>();
+public class JedissonAsyncPubSub extends AbstractJedissonPubSub implements IJedissonAsyncPubSub{
 	
-	public JedissonAsyncPubSub(String name, IJedissonSerializer serializer,
-			Jedisson jedisson) {
+	private static Map<String, JedissonAsyncPubSub> pubSubMap = new ConcurrentHashMap<>();
+	
+	public JedissonAsyncPubSub(String name, IJedissonSerializer serializer,Jedisson jedisson) {
 		super(name, serializer, jedisson);
-		// TODO Auto-generated constructor stub
 	}
 
-	@Override
-	public <T> void publish(String channelName, T message) {
-		IJedissonPromise<T> future = new JedissonPromise(getSerializer());
-		try{
-			PUBLISH command = new PUBLISH(future,channelName.getBytes(),getSerializer().serialize(message));
-			getJedisson().getAsyncService().sendCommand(command);	
-		}catch(InterruptedException e){
-			future.setFailure(e);
+	public static JedissonAsyncPubSub getPubSub(final String name, IJedissonSerializer serializer, Jedisson jedisson){
+		JedissonAsyncPubSub pubsub = pubSubMap.get(name);
+		if(pubsub == null){
+			synchronized(pubSubMap){
+				pubsub = pubSubMap.get(name);
+				if(pubsub == null){
+					pubsub = new JedissonAsyncPubSub(name,serializer,jedisson);
+					pubSubMap.put(name, pubsub);
+				}
+			}
 		}
-		currFuture.set(future);
+		return pubsub;
 	}
-
+	
 	@Override
-	public IJedissonPubSub withAsync() {
-		return this;
+	public <T> CompletableFuture<Long> publish(String channelName, T message) {
+		PUBLISH command = new PUBLISH(channelName.getBytes(),getSerializer().serialize(message));
+		return getJedisson().getAsyncService().execCommand(command);
 	}
-
-	@Override
-	public boolean isAsync() {
-		return true;
-	}
-
-	@Override
-	public <R> IJedissonPromise<R> future() {
-		return currFuture.get();
-	}
-
 }

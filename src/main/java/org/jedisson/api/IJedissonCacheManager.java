@@ -1,10 +1,12 @@
 package org.jedisson.api;
 
-public interface IJedissonCacheManager {
+import org.jedisson.cache.JedissonCacheConfiguration;
 
-	public <K,V> IJedissonCache<K,V> getCache(final String name);
+public interface IJedissonCacheManager {
 	
-	public <K,V> IJedissonCache<K,V> getCache(final String name, final IJedissonCacheConfiguration<K,V> configuration);
+	public <K,V> IJedissonAsyncCache<K,V> getAsyncCache(final String name);
+	
+	public <K,V> IJedissonAsyncCache<K,V> getAsyncCache(final String name, final JedissonCacheConfiguration<K,V> configuration);
 	
 	public void removeCache(final String name);
 }

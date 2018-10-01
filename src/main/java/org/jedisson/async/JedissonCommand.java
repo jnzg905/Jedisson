@@ -1,46 +1,53 @@
 package org.jedisson.async;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
-import org.jedisson.api.IJedissonPromise;
+import org.jedisson.api.IJedissonSerializer;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.script.RedisScript;
 
-public abstract class JedissonCommand {
+public abstract class JedissonCommand<V> {
 	protected byte[] key;
-		
-	protected IJedissonPromise future;
-	
+			
 	protected long threadId;
 	
-	public JedissonCommand(IJedissonPromise future, final byte[] key){
-		this.future = future;
+	protected CompletableFuture<V> future;
+	
+	protected IJedissonSerializer<V> valueSerializer;
+	
+	public JedissonCommand(final byte[] key, IJedissonSerializer<V> valueSerializer){
 		this.key = key;
 		threadId = Thread.currentThread().getId();
-	}
-
-	public IJedissonPromise getFuture() {
-		return future;
-	}
-
-	public void setFuture(IJedissonPromise future) {
-		this.future = future;
+		this.valueSerializer = valueSerializer;
 	}
 
 	public long getThreadId() {
 		return threadId;
 	}
 
+	public CompletableFuture<V> getFuture(){
+		return future;
+	}
+	
+	public void setFuture(CompletableFuture<V> future){
+		this.future = future;
+	}
+	
+	public IJedissonSerializer<V> getValueSerializer(){
+		return valueSerializer;
+	}
+	
 	public abstract void execute(RedisConnection connection);
 	
-	public static class LINDEX extends JedissonCommand{
+	public static class LINDEX<V> extends JedissonCommand<V>{
 
 		private long index;
 		
-		public LINDEX(IJedissonPromise future, byte[] key, long index) {
-			super(future, key);
+		public LINDEX(IJedissonSerializer<V> valueSerializer,byte[] key, long index) {
+			super(key,valueSerializer);
 			this.index = index;
 		}
 
@@ -50,10 +57,10 @@ public abstract class JedissonCommand {
 		}
 	}
 	
-	public static class LLEN extends JedissonCommand{
+	public static class LLEN extends JedissonCommand<Long>{
 
-		public LLEN(IJedissonPromise future, byte[] key) {
-			super(future, key);
+		public LLEN(byte[] key) {
+			super(key,null);
 			// TODO Auto-generated constructor stub
 		}
 
@@ -64,11 +71,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class RPUSH extends JedissonCommand{
+	public static class RPUSH extends JedissonCommand<Long>{
 		private byte[][] values;
 		
-		public RPUSH(IJedissonPromise future, byte[] key, byte[]... values) {
-			super(future, key);
+		public RPUSH(byte[] key, byte[]... values) {
+			super(key,null);
 			this.values = values;
 		}
 
@@ -79,12 +86,12 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class LPUSH extends JedissonCommand{
+	public static class LPUSH extends JedissonCommand<Long>{
 
 		private byte[][] values;
 		
-		public LPUSH(IJedissonPromise future, byte[] key, byte[]... values) {
-			super(future, key);
+		public LPUSH(byte[] key, byte[]... values) {
+			super(key,null);
 			this.values = values;
 		}
 
@@ -95,13 +102,13 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class LSET extends JedissonCommand{
+	public static class LSET extends JedissonCommand<String>{
 		
 		private long index;
 		private byte[] value;
 		
-		public LSET(IJedissonPromise future, byte[] key, long index, byte[] value) {
-			super(future, key);
+		public LSET(byte[] key, long index, byte[] value) {
+			super(key,null);
 			this.index = index;
 			this.value = value;
 		}
@@ -113,10 +120,10 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class LPOP extends JedissonCommand{
+	public static class LPOP<V> extends JedissonCommand<V>{
  
-		public LPOP(IJedissonPromise future, byte[] key) {
-			super(future, key);
+		public LPOP(IJedissonSerializer<V> serializer, byte[] key) {
+			super(key,serializer);
 			// TODO Auto-generated constructor stub
 		}
 
@@ -127,12 +134,12 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class LREM extends JedissonCommand{
+	public static class LREM extends JedissonCommand<Long>{
 		private long count;
 		private byte[] value;
 		
-		public LREM(IJedissonPromise future, byte[] key, long count, byte[] value) {
-			super(future, key);
+		public LREM(byte[] key, long count, byte[] value) {
+			super(key,null);
 			this.count = count;
 			this.value = value;
 		}
@@ -144,9 +151,9 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class DEL extends JedissonCommand{ 
-		public DEL(IJedissonPromise future, byte[] key) {
-			super(future, key);
+	public static class DEL extends JedissonCommand<Long>{ 
+		public DEL(byte[] key) {
+			super(key,null);
 			// TODO Auto-generated constructor stub
 		}
 
@@ -157,13 +164,13 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class LRANGE extends JedissonCommand{
+	public static class LRANGE<V> extends JedissonCommand<V>{
 
 		private long begin;
 		private long end;
 		
-		public LRANGE(IJedissonPromise future, byte[] key, long begin, long end) {
-			super(future, key);
+		public LRANGE(IJedissonSerializer<V> serializer, byte[] key, long begin, long end) {
+			super(key,serializer);
 			this.begin = begin;
 			this.end = end;
 		}
@@ -175,10 +182,10 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HLEN extends JedissonCommand{
+	public static class HLEN extends JedissonCommand<Long>{
 
-		public HLEN(IJedissonPromise future, byte[] key) {
-			super(future, key);
+		public HLEN(byte[] key) {
+			super(key,null);
 			// TODO Auto-generated constructor stub
 		}
 
@@ -189,12 +196,12 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HEXISTS extends JedissonCommand{
+	public static class HEXISTS extends JedissonCommand<Boolean>{
 
 		private byte[] field;
 		
-		public HEXISTS(IJedissonPromise future, byte[] key, byte[] field) {
-			super(future, key);
+		public HEXISTS(byte[] key, byte[] field) {
+			super(key,null);
 			this.field = field;
 		}
 
@@ -205,12 +212,12 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HGET extends JedissonCommand{
+	public static class HGET<V> extends JedissonCommand<V>{
 
 		private byte[] field;
 		
-		public HGET(IJedissonPromise future, byte[] key, byte[] field) {
-			super(future, key);
+		public HGET(IJedissonSerializer<V> valueSerializer,byte[] key, byte[] field) {
+			super(key, valueSerializer);
 			this.field = field;
 		}
 
@@ -220,13 +227,13 @@ public abstract class JedissonCommand {
 		}
 		
 	}
-	public static class HSET extends JedissonCommand{
+	public static class HSET extends JedissonCommand<Long>{
 
 		private byte[] field;
 		private byte[] value;
 		
-		public HSET(IJedissonPromise future, byte[] key, byte[] field, byte[] value) {
-			super(future, key);
+		public HSET(byte[] key, byte[] field, byte[] value) {
+			super(key,null);
 			this.field = field;
 			this.value = value;
 		}
@@ -238,11 +245,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HMSET extends JedissonCommand{
+	public static class HMSET extends JedissonCommand<String>{
 		private Map<byte[],byte[]> hashes;
 		
-		public HMSET(IJedissonPromise future, byte[] key, Map<byte[],byte[]> hashes) {
-			super(future, key);
+		public HMSET(byte[] key, Map<byte[],byte[]> hashes) {
+			super(key,null);
 			this.hashes = hashes;
 		}
 
@@ -253,11 +260,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HMGET extends JedissonCommand{
+	public static class HMGET<V> extends JedissonCommand<V>{
 		private byte[][] fields;
 		
-		public HMGET(IJedissonPromise future, byte[] key, byte[]... fields) {
-			super(future, key);
+		public HMGET(IJedissonSerializer<V> valueSerializer,byte[] key,  byte[]... fields) {
+			super(key,valueSerializer);
 			this.fields = fields;
 		}
 
@@ -268,10 +275,10 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HVALS extends JedissonCommand{
+	public static class HVALS<V> extends JedissonCommand<V>{
 
-		public HVALS(IJedissonPromise future, byte[] key) {
-			super(future, key);
+		public HVALS(IJedissonSerializer<V> serializer, byte[] key) {
+			super(key,serializer);
 			// TODO Auto-generated constructor stub
 		}
 
@@ -282,11 +289,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HDEL extends JedissonCommand{
+	public static class HDEL extends JedissonCommand<Long>{
 		private byte[][] fields;
 		
-		public HDEL(IJedissonPromise future, byte[] key, byte[]... fields) {
-			super(future, key);
+		public HDEL(byte[] key, byte[]... fields) {
+			super(key,null);
 			this.fields = fields;
 		}
 
@@ -299,8 +306,8 @@ public abstract class JedissonCommand {
 	
 	public static class HSCAN extends JedissonCommand{
 		 ScanOptions scanOption;
-		public HSCAN(IJedissonPromise future, byte[] key, ScanOptions scanOption) {
-			super(future, key);
+		public HSCAN(IJedissonSerializer serializer, byte[] key, ScanOptions scanOption) {
+			super(key,serializer);
 			this.scanOption = scanOption;
 		}
 
@@ -311,11 +318,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class PUBLISH extends JedissonCommand{
+	public static class PUBLISH extends JedissonCommand<Long>{
 		private byte[] message;
 		
-		public PUBLISH(IJedissonPromise future, byte[] key, byte[] message) {
-			super(future, key);
+		public PUBLISH(byte[] key, byte[] message) {
+			super(key,null);
 			this.message = message;
 		}
 
@@ -326,11 +333,11 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class BLPOP extends JedissonCommand{
+	public static class BLPOP<V> extends JedissonCommand<V>{
 		private int timeout;
 		
-		public BLPOP(IJedissonPromise future, byte[] key, int timeout) {
-			super(future, key);
+		public BLPOP(IJedissonSerializer<V> serializer, byte[] key, int timeout) {
+			super(key,serializer);
 			this.timeout = timeout;
 		}
 
@@ -341,13 +348,13 @@ public abstract class JedissonCommand {
 		
 	}
 	
-	public static class HSETNX extends JedissonCommand{
+	public static class HSETNX extends JedissonCommand<Boolean>{
 
 		private byte[] field;
 		private byte[] value;
 		
-		public HSETNX(IJedissonPromise future, byte[] key, byte[] field, byte[] value) {
-			super(future, key);
+		public HSETNX(byte[] key, byte[] field, byte[] value) {
+			super(key,null);
 			this.field = field;
 			this.value = value;
 		}
@@ -364,8 +371,8 @@ public abstract class JedissonCommand {
 		private int keyNum;
 		private byte[][] keysAndArgs;
 		
-		public EVAL(IJedissonPromise future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
-			super(future, null);
+		public EVAL(RedisScript script,IJedissonSerializer valueSerializer, int keyNum, byte[]... keysAndArgs) {
+			super(null,valueSerializer);
 			this.script = script;
 			this.keyNum = keyNum;
 			this.keysAndArgs = keysAndArgs;
@@ -382,8 +389,8 @@ public abstract class JedissonCommand {
 		RedisScript script;
 		private int keyNum;
 		private byte[][] keysAndArgs;
-		public EVALSHA(IJedissonPromise future, RedisScript script, int keyNum, byte[]... keysAndArgs) {
-			super(future, null);
+		public EVALSHA(RedisScript script, IJedissonSerializer valueSerializer, int keyNum, byte[]... keysAndArgs) {
+			super(null,valueSerializer);
 			this.script = script;
 			this.keyNum = keyNum;
 			this.keysAndArgs = keysAndArgs;

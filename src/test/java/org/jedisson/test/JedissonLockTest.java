@@ -10,23 +10,32 @@ import org.jedisson.Jedisson;
 import org.jedisson.api.IJedisson;
 import org.jedisson.lock.JedissonLock;
 import org.jedisson.lock.JedissonReentrantLock;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
+@PropertySource("file:config/jedisson.properties")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes=JedissonLockTest.class)
 @SpringBootApplication(scanBasePackages="org.jedisson")
-public class JedissonLockTest{
+public class JedissonLockTest extends JedissonBaseTest{
 
 	private int index;
+	
+	@Before
+	public void begin() throws InterruptedException{
+		super.begin();
+	}
+	
 	@Test
 	public void testJedissonLockLock() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(100);
 		
-		IJedisson jedisson = Jedisson.getJedisson();
 		ExecutorService executor = Executors.newFixedThreadPool(10);
 		
 		for(int i = 0; i < 100; i++){
@@ -76,7 +85,6 @@ public class JedissonLockTest{
 	@Test
 	public void testJedissonLockRate() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(4);
-		IJedisson jedisson = Jedisson.getJedisson();
 		ExecutorService executor = Executors.newFixedThreadPool(4);
 		
 		for(int i = 0; i < 4; i++){
@@ -102,7 +110,6 @@ public class JedissonLockTest{
 	@Test
 	public void testJedissonReentrantLock() throws InterruptedException{
 		final CountDownLatch latch = new CountDownLatch(100);
-		IJedisson jedisson = Jedisson.getJedisson();
 		ExecutorService executor = Executors.newFixedThreadPool(10);
 		for(int i = 0; i < 100; i++){
 			final JedissonReentrantLock lock = jedisson.getReentrantLock("my_lock");
